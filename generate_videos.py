@@ -882,6 +882,600 @@ def generate_pixel_sprites_frame(width, height, palette, t, mirror_h=True, mirro
 
     return img
 
+def generate_chladni_frame(width, height, palette, t, mirror_h=True, mirror_v=True):
+    """
+    Chladni patterns (cymatics) - standing wave patterns on vibrating plates.
+    Creates symmetric, mandala-like geometric patterns.
+    """
+    img = Image.new('RGB', (width, height))
+    pixels = img.load()
+
+    gen_width = (width // 2) if mirror_h else width
+    gen_height = (height // 2) if mirror_v else height
+
+    # Animate frequencies through time
+    time_offset = t * 2 * math.pi
+    n = 3 + math.sin(time_offset) * 2  # Vary between 1 and 5
+    m = 4 + math.cos(time_offset * 0.7) * 2
+
+    # Phase shift for rotation effect
+    phase = time_offset * 0.5
+
+    for y in range(gen_height):
+        for x in range(gen_width):
+            # Normalize coordinates to [-π, π]
+            nx = (x / gen_width - 0.5) * 2 * math.pi
+            ny = (y / gen_height - 0.5) * 2 * math.pi
+
+            # Chladni equation with phase shift
+            z1 = math.sin(n * nx + phase) * math.sin(m * ny + phase)
+            z2 = math.sin(m * nx + phase) * math.sin(n * ny + phase)
+            z = abs(z1 + z2)
+
+            # Map to color palette
+            value = z / 2.0  # Normalize to 0-1
+            color = get_color_from_palette(value, palette)
+
+            # Set pixel and apply mirroring
+            pixels[x, y] = color
+            if mirror_h:
+                pixels[width - 1 - x, y] = color
+            if mirror_v:
+                pixels[x, height - 1 - y] = color
+            if mirror_h and mirror_v:
+                pixels[width - 1 - x, height - 1 - y] = color
+
+    return img
+
+def generate_domain_warp_frame(width, height, palette, t, mirror_h=True, mirror_v=True):
+    """
+    Domain warping - recursive noise distortion creating organic, marbled patterns.
+    """
+    img = Image.new('RGB', (width, height))
+    pixels = img.load()
+
+    gen_width = (width // 2) if mirror_h else width
+    gen_height = (height // 2) if mirror_v else height
+
+    scale = 0.003
+    time_offset = math.sin(t * 2 * math.pi) * 50
+
+    for y in range(gen_height):
+        for x in range(gen_width):
+            # First level of warping
+            q_x = perlin2D(x * scale + time_offset, y * scale, octaves=4, persistence=0.5)
+            q_y = perlin2D(x * scale, y * scale + time_offset, octaves=4, persistence=0.5)
+
+            # Second level - warp the coordinates with the first warp
+            r_x = perlin2D((x + q_x * 50) * scale, (y + q_y * 50) * scale, octaves=4, persistence=0.5)
+            r_y = perlin2D((x + q_x * 50) * scale + 5.2, (y + q_y * 50) * scale + 1.3, octaves=4, persistence=0.5)
+
+            # Final value using double-warped coordinates
+            value = perlin2D((x + r_x * 50) * scale, (y + r_y * 50) * scale, octaves=6, persistence=0.5)
+            value = (value + 1) / 2  # Normalize to 0-1
+
+            color = get_color_from_palette(value, palette)
+
+            # Set pixel and apply mirroring
+            pixels[x, y] = color
+            if mirror_h:
+                pixels[width - 1 - x, y] = color
+            if mirror_v:
+                pixels[x, height - 1 - y] = color
+            if mirror_h and mirror_v:
+                pixels[width - 1 - x, height - 1 - y] = color
+
+    return img
+
+def generate_superformula_frame(width, height, palette, t, mirror_h=True, mirror_v=True):
+    """
+    Superformula/Supershapes - generalized formula creating flowers, stars, and natural forms.
+    """
+    img = Image.new('RGB', (width, height), PALETTE['background'])
+    pixels = img.load()
+
+    gen_width = (width // 2) if mirror_h else width
+    gen_height = (height // 2) if mirror_v else height
+
+    center_x = gen_width // 2
+    center_y = gen_height // 2
+
+    # Animate parameters through time
+    time_offset = t * 2 * math.pi
+    m = 5 + math.sin(time_offset * 0.5) * 2  # Symmetry
+    n1 = 1.0
+    n2 = 2.0 + math.sin(time_offset) * 1.5
+    n3 = 2.0 + math.cos(time_offset * 0.7) * 1.5
+    a = b = 1.0
+
+    # Generate multiple rotating supershapes at different scales
+    num_shapes = 3
+    for shape_idx in range(num_shapes):
+        scale_factor = (shape_idx + 1) * 80
+        rotation = time_offset + shape_idx * math.pi / num_shapes
+
+        # Generate points along the superformula
+        num_points = 360
+        points = []
+        for i in range(num_points + 1):
+            theta = (i / num_points) * 2 * math.pi
+
+            # Superformula
+            t1 = abs(math.cos(m * theta / 4) / a) ** n2
+            t2 = abs(math.sin(m * theta / 4) / b) ** n3
+            r = (t1 + t2) ** (-1.0 / n1) if (t1 + t2) > 0 else 0
+
+            # Apply rotation and scale
+            r *= scale_factor
+            x = center_x + r * math.cos(theta + rotation)
+            y = center_y + r * math.sin(theta + rotation)
+
+            if 0 <= x < gen_width and 0 <= y < gen_height:
+                points.append((int(x), int(y)))
+
+        # Draw the shape
+        value = shape_idx / num_shapes
+        color = get_color_from_palette(value, palette)
+
+        for px, py in points:
+            if 0 <= px < gen_width and 0 <= py < gen_height:
+                pixels[px, py] = color
+                if mirror_h and px < gen_width:
+                    pixels[width - 1 - px, py] = color
+                if mirror_v and py < gen_height:
+                    pixels[px, height - 1 - py] = color
+                if mirror_h and mirror_v:
+                    pixels[width - 1 - px, height - 1 - py] = color
+
+    return img
+
+def generate_strange_attractor_frame(width, height, palette, t, mirror_h=True, mirror_v=True):
+    """
+    Strange attractors (Lorenz system) - chaotic dynamical system creating butterfly patterns.
+    """
+    img = Image.new('RGB', (width, height), PALETTE['background'])
+    draw = ImageDraw.Draw(img, 'RGBA')
+
+    gen_width = (width // 2) if mirror_h else width
+    gen_height = (height // 2) if mirror_v else height
+
+    # Lorenz system parameters
+    sigma = 10.0
+    rho = 28.0
+    beta = 8.0 / 3.0
+
+    # Rotate camera around attractor
+    time_offset = t * 2 * math.pi
+
+    # Initialize multiple particles
+    num_particles = 20
+    random.seed(42)
+
+    for particle_idx in range(num_particles):
+        # Initial conditions
+        x, y, z = 0.1 + particle_idx * 0.1, 0.0, 0.0
+
+        points = []
+        dt = 0.01
+        iterations = 500
+
+        for _ in range(iterations):
+            # Lorenz equations
+            dx = sigma * (y - x) * dt
+            dy = (x * (rho - z) - y) * dt
+            dz = (x * y - beta * z) * dt
+
+            x += dx
+            y += dy
+            z += dz
+
+            # Rotate and project to 2D
+            angle_x = time_offset
+            angle_y = time_offset * 0.7
+
+            # Rotation around y-axis
+            x_rot = x * math.cos(angle_y) - z * math.sin(angle_y)
+            z_rot = x * math.sin(angle_y) + z * math.cos(angle_y)
+
+            # Rotation around x-axis
+            y_rot = y * math.cos(angle_x) - z_rot * math.sin(angle_x)
+
+            # Project to screen
+            scale = 8
+            px = int(gen_width / 2 + x_rot * scale)
+            py = int(gen_height / 2 + y_rot * scale)
+
+            if 0 <= px < gen_width and 0 <= py < gen_height:
+                points.append((px, py))
+
+        if len(points) > 1:
+            value = particle_idx / num_particles
+            color = get_color_from_palette(value, palette)
+            alpha = 40
+
+            # Draw trail
+            for i in range(len(points) - 1):
+                draw.line([points[i], points[i+1]], fill=color + (alpha,), width=1)
+
+                # Mirror
+                if mirror_h:
+                    p1 = (width - 1 - points[i][0], points[i][1])
+                    p2 = (width - 1 - points[i+1][0], points[i+1][1])
+                    draw.line([p1, p2], fill=color + (alpha,), width=1)
+                if mirror_v:
+                    p1 = (points[i][0], height - 1 - points[i][1])
+                    p2 = (points[i+1][0], height - 1 - points[i+1][1])
+                    draw.line([p1, p2], fill=color + (alpha,), width=1)
+                if mirror_h and mirror_v:
+                    p1 = (width - 1 - points[i][0], height - 1 - points[i][1])
+                    p2 = (width - 1 - points[i+1][0], height - 1 - points[i+1][1])
+                    draw.line([p1, p2], fill=color + (alpha,), width=1)
+
+    return img
+
+def generate_lsystem_frame(width, height, palette, t, mirror_h=True, mirror_v=True):
+    """
+    L-Systems (Lindenmayer Systems) - fractal plant growth using string rewriting.
+    """
+    img = Image.new('RGB', (width, height), PALETTE['background'])
+    draw = ImageDraw.Draw(img, 'RGBA')
+
+    gen_width = (width // 2) if mirror_h else width
+    gen_height = (height // 2) if mirror_v else height
+
+    # L-System rules for plant-like structure
+    axiom = "F"
+    rules = {'F': 'F[+F]F[-F]F'}
+
+    # Animate iterations and angle
+    time_offset = t * 2 * math.pi
+    iterations = 4
+    angle_variation = math.sin(time_offset) * 10  # Degrees
+
+    # Generate string
+    current = axiom
+    for _ in range(iterations):
+        next_str = ""
+        for char in current:
+            next_str += rules.get(char, char)
+        current = next_str
+
+    # Turtle graphics rendering
+    stack = []
+    x, y = gen_width // 2, gen_height - 50
+    angle = -90  # Start pointing up
+    step_length = 5
+    branch_angle = 25 + angle_variation
+
+    points = [(x, y)]
+
+    for char in current:
+        if char == 'F':
+            # Move forward
+            rad = math.radians(angle)
+            new_x = x + step_length * math.cos(rad)
+            new_y = y + step_length * math.sin(rad)
+
+            if 0 <= new_x < gen_width and 0 <= new_y < gen_height:
+                points.append((new_x, new_y))
+
+                # Draw line
+                value = (len(points) % 20) / 20.0
+                color = get_color_from_palette(value, palette)
+                alpha = 60
+
+                draw.line([(x, y), (new_x, new_y)], fill=color + (alpha,), width=1)
+
+                # Mirror
+                if mirror_h:
+                    draw.line([(width - 1 - x, y), (width - 1 - new_x, new_y)], fill=color + (alpha,), width=1)
+                if mirror_v:
+                    draw.line([(x, height - 1 - y), (new_x, height - 1 - new_y)], fill=color + (alpha,), width=1)
+                if mirror_h and mirror_v:
+                    draw.line([(width - 1 - x, height - 1 - y), (width - 1 - new_x, height - 1 - new_y)], fill=color + (alpha,), width=1)
+
+            x, y = new_x, new_y
+
+        elif char == '+':
+            angle += branch_angle
+        elif char == '-':
+            angle -= branch_angle
+        elif char == '[':
+            stack.append((x, y, angle))
+        elif char == ']':
+            if stack:
+                x, y, angle = stack.pop()
+
+    return img
+
+def generate_boids_frame(width, height, palette, t, mirror_h=True, mirror_v=True):
+    """
+    Boids flocking simulation - emergent behavior from simple rules.
+    """
+    img = Image.new('RGB', (width, height), PALETTE['background'])
+    draw = ImageDraw.Draw(img, 'RGBA')
+
+    gen_width = (width // 2) if mirror_h else width
+    gen_height = (height // 2) if mirror_v else height
+
+    # Initialize boids with deterministic seed
+    random.seed(42 + int(t * 100))
+    num_boids = 100
+
+    class Boid:
+        def __init__(self):
+            self.x = random.uniform(0, gen_width)
+            self.y = random.uniform(0, gen_height)
+            self.vx = random.uniform(-2, 2)
+            self.vy = random.uniform(-2, 2)
+
+    boids = [Boid() for _ in range(num_boids)]
+
+    # Simulate for a few steps
+    for step in range(20):
+        for boid in boids:
+            # Separation, alignment, cohesion
+            sep_x, sep_y = 0, 0
+            align_x, align_y = 0, 0
+            coh_x, coh_y = 0, 0
+            neighbors = 0
+
+            for other in boids:
+                if other == boid:
+                    continue
+
+                dx = boid.x - other.x
+                dy = boid.y - other.y
+                dist = math.sqrt(dx*dx + dy*dy)
+
+                if dist < 50 and dist > 0:
+                    # Separation
+                    sep_x += dx / dist
+                    sep_y += dy / dist
+
+                    # Alignment
+                    align_x += other.vx
+                    align_y += other.vy
+
+                    # Cohesion
+                    coh_x += other.x
+                    coh_y += other.y
+
+                    neighbors += 1
+
+            if neighbors > 0:
+                align_x /= neighbors
+                align_y /= neighbors
+                coh_x = (coh_x / neighbors - boid.x) * 0.01
+                coh_y = (coh_y / neighbors - boid.y) * 0.01
+
+            # Apply forces
+            boid.vx += sep_x * 0.05 + align_x * 0.05 + coh_x
+            boid.vy += sep_y * 0.05 + align_y * 0.05 + coh_y
+
+            # Limit speed
+            speed = math.sqrt(boid.vx*boid.vx + boid.vy*boid.vy)
+            if speed > 3:
+                boid.vx = (boid.vx / speed) * 3
+                boid.vy = (boid.vy / speed) * 3
+
+            # Update position (toroidal wrapping)
+            boid.x = (boid.x + boid.vx) % gen_width
+            boid.y = (boid.y + boid.vy) % gen_height
+
+    # Draw boids
+    for i, boid in enumerate(boids):
+        x, y = int(boid.x), int(boid.y)
+        value = i / num_boids
+        color = get_color_from_palette(value, palette)
+        alpha = 80
+
+        # Draw small triangle
+        size = 3
+        angle = math.atan2(boid.vy, boid.vx)
+        pts = [
+            (x + size * math.cos(angle), y + size * math.sin(angle)),
+            (x + size * math.cos(angle + 2.5), y + size * math.sin(angle + 2.5)),
+            (x + size * math.cos(angle - 2.5), y + size * math.sin(angle - 2.5))
+        ]
+
+        draw.polygon(pts, fill=color + (alpha,))
+
+        # Mirror
+        if mirror_h:
+            pts_h = [(width - 1 - px, py) for px, py in pts]
+            draw.polygon(pts_h, fill=color + (alpha,))
+        if mirror_v:
+            pts_v = [(px, height - 1 - py) for px, py in pts]
+            draw.polygon(pts_v, fill=color + (alpha,))
+        if mirror_h and mirror_v:
+            pts_both = [(width - 1 - px, height - 1 - py) for px, py in pts]
+            draw.polygon(pts_both, fill=color + (alpha,))
+
+    return img
+
+def generate_reaction_diffusion_frame(width, height, palette, t, mirror_h=True, mirror_v=True):
+    """
+    Reaction-Diffusion (Gray-Scott model) - creates organic Turing patterns.
+    """
+    img = Image.new('RGB', (width, height))
+    pixels = img.load()
+
+    gen_width = (width // 2) if mirror_h else width
+    gen_height = (height // 2) if mirror_v else height
+
+    # Smaller grid for performance
+    grid_w, grid_h = gen_width // 2, gen_height // 2
+
+    # Initialize grids
+    random.seed(42)
+    u = [[1.0 for _ in range(grid_w)] for _ in range(grid_h)]
+    v = [[0.0 for _ in range(grid_w)] for _ in range(grid_h)]
+
+    # Add initial perturbation in center
+    cx, cy = grid_w // 2, grid_h // 2
+    for y in range(cy - 10, cy + 10):
+        for x in range(cx - 10, cx + 10):
+            if 0 <= x < grid_w and 0 <= y < grid_h:
+                u[y][x] = 0.5
+                v[y][x] = 0.25
+
+    # Animate parameters
+    time_offset = t * 2 * math.pi
+    feed = 0.055 + math.sin(time_offset) * 0.01
+    kill = 0.062 + math.cos(time_offset * 0.7) * 0.005
+
+    # Diffusion rates
+    Du = 0.16
+    Dv = 0.08
+
+    # Simulation steps
+    for _ in range(20):
+        u_new = [[0.0 for _ in range(grid_w)] for _ in range(grid_h)]
+        v_new = [[0.0 for _ in range(grid_w)] for _ in range(grid_h)]
+
+        for y in range(grid_h):
+            for x in range(grid_w):
+                # Laplacian (periodic boundaries)
+                u_sum = (u[(y-1)%grid_h][x] + u[(y+1)%grid_h][x] +
+                         u[y][(x-1)%grid_w] + u[y][(x+1)%grid_w] - 4*u[y][x])
+                v_sum = (v[(y-1)%grid_h][x] + v[(y+1)%grid_h][x] +
+                         v[y][(x-1)%grid_w] + v[y][(x+1)%grid_w] - 4*v[y][x])
+
+                # Reaction
+                uvv = u[y][x] * v[y][x] * v[y][x]
+
+                u_new[y][x] = u[y][x] + (Du * u_sum - uvv + feed * (1 - u[y][x]))
+                v_new[y][x] = v[y][x] + (Dv * v_sum + uvv - (kill + feed) * v[y][x])
+
+                # Clamp
+                u_new[y][x] = max(0, min(1, u_new[y][x]))
+                v_new[y][x] = max(0, min(1, v_new[y][x]))
+
+        u, v = u_new, v_new
+
+    # Render to image
+    for y in range(gen_height):
+        for x in range(gen_width):
+            gx, gy = x // 2, y // 2
+            if gx < grid_w and gy < grid_h:
+                value = v[gy][gx]
+                color = get_color_from_palette(value, palette)
+
+                pixels[x, y] = color
+                if mirror_h:
+                    pixels[width - 1 - x, y] = color
+                if mirror_v:
+                    pixels[x, height - 1 - y] = color
+                if mirror_h and mirror_v:
+                    pixels[width - 1 - x, height - 1 - y] = color
+
+    return img
+
+def generate_differential_growth_frame(width, height, palette, t, mirror_h=True, mirror_v=True):
+    """
+    Differential Growth - organic edge-growing algorithm creating coral-like forms.
+    """
+    img = Image.new('RGB', (width, height), PALETTE['background'])
+    draw = ImageDraw.Draw(img, 'RGBA')
+
+    gen_width = (width // 2) if mirror_h else width
+    gen_height = (height // 2) if mirror_v else height
+
+    center_x, center_y = gen_width // 2, gen_height // 2
+
+    # Initialize circle of nodes
+    num_nodes = 50
+    radius = 50 + math.sin(t * 2 * math.pi) * 20
+
+    class Node:
+        def __init__(self, x, y):
+            self.x = x
+            self.y = y
+
+    nodes = []
+    for i in range(num_nodes):
+        angle = (i / num_nodes) * 2 * math.pi
+        x = center_x + radius * math.cos(angle)
+        y = center_y + radius * math.sin(angle)
+        nodes.append(Node(x, y))
+
+    # Growth simulation
+    max_edge_len = 10
+    min_edge_len = 5
+    repulsion_dist = 15
+
+    for iteration in range(30):
+        # Split long edges
+        new_nodes = []
+        i = 0
+        while i < len(nodes):
+            curr = nodes[i]
+            next_node = nodes[(i + 1) % len(nodes)]
+
+            dx = next_node.x - curr.x
+            dy = next_node.y - curr.y
+            dist = math.sqrt(dx*dx + dy*dy)
+
+            if dist > max_edge_len:
+                # Insert new node at midpoint
+                new_x = (curr.x + next_node.x) / 2
+                new_y = (curr.y + next_node.y) / 2
+                new_nodes.append(Node(new_x, new_y))
+
+            new_nodes.append(curr)
+            i += 1
+
+        nodes = new_nodes
+
+        # Apply repulsion forces
+        for node in nodes:
+            fx, fy = 0, 0
+
+            for other in nodes:
+                if other == node:
+                    continue
+
+                dx = node.x - other.x
+                dy = node.y - other.y
+                dist = math.sqrt(dx*dx + dy*dy)
+
+                if dist < repulsion_dist and dist > 0:
+                    force = (repulsion_dist - dist) / repulsion_dist
+                    fx += (dx / dist) * force
+                    fy += (dy / dist) * force
+
+            node.x += fx * 0.1
+            node.y += fy * 0.1
+
+    # Draw the growth
+    points = [(int(node.x), int(node.y)) for node in nodes]
+    if len(points) > 2:
+        points.append(points[0])  # Close the loop
+
+        value = t
+        color = get_color_from_palette(value, palette)
+        alpha = 100
+
+        for i in range(len(points) - 1):
+            draw.line([points[i], points[i+1]], fill=color + (alpha,), width=2)
+
+            # Mirror
+            if mirror_h:
+                p1 = (width - 1 - points[i][0], points[i][1])
+                p2 = (width - 1 - points[i+1][0], points[i+1][1])
+                draw.line([p1, p2], fill=color + (alpha,), width=2)
+            if mirror_v:
+                p1 = (points[i][0], height - 1 - points[i][1])
+                p2 = (points[i+1][0], height - 1 - points[i+1][1])
+                draw.line([p1, p2], fill=color + (alpha,), width=2)
+            if mirror_h and mirror_v:
+                p1 = (width - 1 - points[i][0], height - 1 - points[i][1])
+                p2 = (width - 1 - points[i+1][0], height - 1 - points[i+1][1])
+                draw.line([p1, p2], fill=color + (alpha,), width=2)
+
+    return img
+
 # ============================================================================
 # VIDEO GENERATORS DICTIONARY
 # ============================================================================
@@ -901,6 +1495,14 @@ GENERATORS = {
     'physarum': ('Physarum Slime Mold', generate_physarum_frame),
     'penrose_tiling': ('Penrose Tiling', generate_penrose_tiling_frame),
     'pixel_sprites': ('Pixel Sprites', generate_pixel_sprites_frame),
+    'chladni': ('Chladni Patterns', generate_chladni_frame),
+    'domain_warp': ('Domain Warping', generate_domain_warp_frame),
+    'superformula': ('Superformula', generate_superformula_frame),
+    'strange_attractor': ('Strange Attractor', generate_strange_attractor_frame),
+    'lsystem': ('L-System Plants', generate_lsystem_frame),
+    'boids': ('Boids Flocking', generate_boids_frame),
+    'reaction_diffusion': ('Reaction-Diffusion', generate_reaction_diffusion_frame),
+    'differential_growth': ('Differential Growth', generate_differential_growth_frame),
 }
 
 # ============================================================================
