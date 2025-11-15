@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+
+# Videos (generated output)
+videos/
+*.mp4
+*.avi
+*.mov
+
+# Test outputs
+test_videos/
+
+# Wallpapers (generated output)
+wallpapers/*.png
+temp_wallpapers/
+wallpaper.png
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Logs
+*.log

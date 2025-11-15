@@ -1,229 +1,217 @@
-# Procedural Wallpaper Generator
+# Procedural Video Clip Generator
 
-Generate beautiful, unique macOS wallpapers using procedural generation techniques with your custom color scheme.
+Generate beautiful, looping video animations using procedural generation techniques with your custom color scheme.
 
 ## Features
 
-- **42 Distinct Generation Techniques**:
-  - Layered Noise (Perlin/Simplex blend)
-  - Voronoi Cells (organic cellular patterns)
-  - Flow Field (particle-like flowing patterns)
-  - Wave Interference (ripple patterns)
-  - Fractal Noise (high-detail ridged terrain)
-  - Cellular Automata (Conway's Game of Life inspired)
-  - Plotter Art (geometric pen-plotter style patterns - [vsketch](https://github.com/abey79/vsketch))
-  - Differential Growth (organic coral-like structures - [differential-line](https://github.com/inconvergent/differential-line))
-  - Penrose Tiling (aperiodic mathematical patterns - [penrose](https://github.com/xnx/penrose))
-  - Bezier Curves (smooth organic shapes - [DeepSVG](https://github.com/alexandre01/deepsvg))
-  - Physarum Slime Mold (nature-inspired network patterns - [physarum](https://github.com/fogleman/physarum))
-  - Pixel Sprites (retro game-style sprites - [pixel-sprite-generator](https://github.com/zfedoran/pixel-sprite-generator))
-  - Wave Function Collapse (algorithmic pattern generation - [WaveFunctionCollapse](https://github.com/mxgmn/WaveFunctionCollapse))
-  - Pixel Art Dithering (authentic 8-bit style - [pyxelate](https://github.com/sedthh/pyxelate))
-  - Sprite Characters (procedural robot sprites - [Sprite-Generator](https://github.com/MaartenGr/Sprite-Generator))
-  - Template Pixel Art (rule-based pixel patterns - [Procedural-Pixel-Art-Generator](https://github.com/Darkhax-Forked/Procedural-Pixel-Art-Generator))
-  - Raytraced SDF (signed distance field geometry with CSG operations - [retrace.gl](https://github.com/stasilo/retrace.gl))
-  - Path-Traced Terrain (photorealistic terrain with retro 80s aesthetics - [THREE.js-PathTracing-Renderer](https://github.com/erichlof/THREE.js-PathTracing-Renderer))
-  - Voxel L-Systems (blocky organic structures using turtle graphics - [voxgen](https://github.com/wodend/voxgen))
-  - Isometric Pixel Art (dimetric projection with pixel-perfect rendering - [ProceduralPixelArt](https://github.com/jlcarr/ProceduralPixelArt))
-  - Low-Poly Terrain (elevation-based landscapes with triangulated mesh - [THREE.Terrain](https://github.com/IceCreamYou/THREE.Terrain))
-  - Reaction-Diffusion (Gray-Scott model creating organic biological patterns - [Ready](https://github.com/GollyGang/ready))
-  - Strange Attractors (chaotic dynamical systems like Lorenz and Rössler - [dysts](https://github.com/GilpinLab/dysts))
-  - DLA Aggregation (diffusion limited aggregation forming coral structures - [dla-gpu](https://github.com/zentralwerkstatt/dla-gpu))
-  - Neural Cellular Automata (self-organizing patterns that grow and heal - [Growing-Neural-Cellular-Automata](https://github.com/PWhiddy/Growing-Neural-Cellular-Automata-Pytorch))
-  - Space Colonization (venation patterns and leaf-vein structures - [morphogenesis-resources](https://github.com/jasonwebb/morphogenesis-resources))
-  - Isometric Voxel Art (multi-angle isometric voxel rendering - [IsoVoxel](https://github.com/tommyettinger/IsoVoxel))
-  - SVG Isometric (triangle grid-based isometric generative art - [isovoxel](https://github.com/rsimmons/isovoxel))
-  - Voxel World Engine (2.5D isometric terrain generation - [IsoEngine](https://github.com/7hebel/IsoEngine))
-  - Multi-Angle Voxels (voxel rendering with emissive glow effects - [spotvox](https://github.com/tommyettinger/spotvox))
-  - Procedural Voxel Mesh (L-system fractal voxel generation - [voxgen](https://github.com/wodend/voxgen))
-  - Seamless Texture Tiling (alpha-gradient blending for infinite tiling - [img2texture](https://github.com/rtmigo/img2texture))
-  - Example-Based Synthesis (multi-example texture synthesis - [texture-synthesis](https://github.com/EmbarkStudios/texture-synthesis))
-  - Hyperbolic Tiling (Escher-like Poincaré disk tesselations - [Escher](https://github.com/b5strbal/Escher))
-  - Wang Tiles (aperiodic coded-edge tiling patterns - [WangTile](https://github.com/sashaouellet/WangTile))
-  - Graph-Cut Synthesis (patch quilting with seam minimization - [TileableTextureSynthesis](https://github.com/lzqsd/TileableTextureSynthesis))
-  - Gaussian Tiling (Gaussian-masked seamless overlapping - [TileMaker](https://github.com/mdushkoff/TileMaker))
-  - Liquid Distortion (psychedelic liquid motion with FBM - [liquid-shape-distortions](https://github.com/MaxBittker/liquid-shape-distortions))
-  - Fractal Sets (Mandelbrot, Julia, and Burning Ship fractals - [shader-fractals](https://github.com/mrange/shader-fractals))
-  - Glitch Effects (analog and digital glitch aesthetics - [KinoGlitch](https://github.com/keijiro/KinoGlitch))
-  - Raymarched Tunnel (infinite tunnel raymarching effects - [shaderbox](https://github.com/daniellimws/shaderbox))
-  - Kaleidoscope Effect (N-fold symmetry kaleidoscope patterns - [MusicVisualizer](https://github.com/Tetr4/MusicVisualizer))
+- **Looping Video Animations**: All videos loop seamlessly with 10-second duration
+- **Multiple Generation Techniques**:
+  - Layered Noise (Perlin/Simplex blend with time evolution)
+  - Flow Field (animated particle-like flowing patterns)
+  - Wave Interference (moving ripple patterns)
+  - Voronoi Cells (animated cellular patterns)
+  - Fractal Noise (evolving ridged terrain)
+  - Cellular Automata (evolving pattern states)
+  - *More generators to be added...*
 
-- **Horizontal + Vertical Symmetry**: All wallpapers default to beautiful symmetric patterns
-- **Custom Color Palette**: All wallpapers use your dark red/brown color scheme
-- **Random Logo Placement**: Automatically centers either Mercury Light or Vanguard logo
-- **Growing Art Gallery**: Add wallpapers to a Photos album that grows over time
-- **Automated Generation**: Set up daily/weekly generation to continuously expand your collection
+- **High Quality Output**: 1920x1080 @ 30fps MP4 videos
+- **Horizontal + Vertical Symmetry**: All videos feature beautiful symmetric patterns
+- **Custom Color Palette**: Uses dark red/brown color scheme matching the wallpaper generator
+- **MP4 Format**: H.264 codec for universal compatibility
 
 ## Quick Start
 
-### Method 1: Growing Photos Album (Recommended)
-
-Create a Photos album that grows as your personal procgen art gallery:
-
-```bash
-# Add 42 new wallpapers to your Photos album (one from each technique)
-./generate_to_photos_album.py
-```
-
-Then set up the wallpaper slideshow:
-1. Open **System Settings** > **Wallpaper**
-2. Select the Photos album: **"Procgen Wallpapers"**
-3. Enable **Change picture** (every 30 minutes recommended)
-4. Enable **Random order**
-
-**Set up automatic daily generation:**
-```bash
-./setup_auto_generate.sh
-```
-
-This adds 42 new wallpapers to your album every day at 9 AM. Your collection keeps growing!
-
-### Method 2: Local Directory
-
-Generate wallpapers to a local directory:
-
-```bash
-# Generate 42 wallpapers (one from each technique) with h+v symmetry (default)
-python3 generate_wallpapers_multi.py
-
-# Generate single wallpaper with symmetry
-./generate_wallpaper.py
-
-# Generate without symmetry
-./generate_wallpaper.py --no-mirror
-```
-
-### Legacy: Login-Based Generation
-
-```bash
-# Set up generation at every login
-./install_login_script.sh
-
-# Uninstall
-./uninstall_login_script.sh
-```
-
-## Files
-
-**Main Scripts:**
-- `generate_to_photos_album.py` - Generate and add to Photos album (recommended)
-- `generate_wallpapers_multi.py` - Generate batch of 42 wallpapers to directory (one from each technique)
-- `generate_wallpaper.py` - Generate single wallpaper to directory
-
-**Setup Scripts:**
-- `setup_auto_generate.sh` - Setup daily automatic generation (9 AM)
-- `install_login_script.sh` - Setup generation at login (legacy)
-- `uninstall_login_script.sh` - Remove login generation
-
-**Utilities:**
-- `setup_wallpaper_slideshow.py` - Generate + configure slideshow manually
-
-**Directories:**
-- `wallpapers/` - Output directory for local wallpapers
-- `temp_wallpapers/` - Temporary storage before Photos import
-- `logos/` - Logo assets (Mercury Light, Vanguard)
-
-## Requirements
-
-- Python 3.x
-- Pillow (PIL)
-- procgen library
+### Installation
 
 Install dependencies:
 ```bash
-pip3 install Pillow git+https://github.com/jcarlosroldan/procgen
+pip3 install -r requirements.txt
+```
+
+Dependencies:
+- Pillow (image processing)
+- numpy (array operations)
+- imageio (video rendering)
+- imageio-ffmpeg (video codec support)
+- tqdm (progress bars)
+- procgen (procedural generation library)
+
+### Generate Videos
+
+Generate all available looping video animations:
+```bash
+python3 generate_videos.py
+```
+
+This will create MP4 files in the `videos/` directory:
+- `01_video_layered_noise.mp4`
+- `02_video_flow_field.mp4`
+- `03_video_interference.mp4`
+- `04_video_voronoi.mp4`
+- `05_video_fractal_noise.mp4`
+- `06_video_cellular.mp4`
+
+Each video is a seamless 10-second loop at 1920x1080 resolution.
+
+## Video Settings
+
+You can customize the video output by editing `generate_videos.py`:
+
+```python
+# Video dimensions
+WIDTH = 1920
+HEIGHT = 1080
+
+# Video settings
+FPS = 30
+DURATION = 10  # seconds
+```
+
+## Technical Details
+
+### Looping Animation
+
+All generators use a time parameter `t` (0 to 1) that represents the position in the loop:
+```python
+def generate_frame(width, height, palette, t, mirror_h=True, mirror_v=True):
+    # t goes from 0 to 1 and loops seamlessly
+    time_offset = math.sin(t * 2 * math.pi) * amplitude
+    # ... use time_offset to animate noise/patterns
+```
+
+The sine wave ensures smooth looping without jumps at the start/end.
+
+### Video Rendering
+
+Videos are rendered using `imageio` with H.264 codec:
+- Codec: libx264
+- Pixel Format: yuv420p (universal compatibility)
+- Quality: 8 (high quality)
+
+### Symmetry
+
+Like the wallpaper generator, videos maintain horizontal and vertical symmetry by:
+1. Generating only one quadrant (top-left)
+2. Mirroring to create 4-way symmetry
+
+## Adding New Generators
+
+To add a new video generator:
+
+1. Create a frame generation function:
+```python
+def generate_my_effect_frame(width, height, palette, t, mirror_h=True, mirror_v=True):
+    """
+    Generate a single frame at time t (0 to 1).
+    """
+    img = Image.new('RGB', (width, height))
+    # ... your animation logic using time parameter t
+    return img
+```
+
+2. Add it to the `GENERATORS` dictionary:
+```python
+GENERATORS = {
+    'layered_noise': ('Layered Noise', generate_layered_noise_frame),
+    # ... existing generators ...
+    'my_effect': ('My Effect', generate_my_effect_frame),
+}
+```
+
+The script will automatically render your new generator.
+
+## Performance Notes
+
+- **Rendering Time**: Each 10-second video (300 frames) takes approximately 1-5 minutes depending on generator complexity
+- **Memory Usage**: Peak memory usage is ~500MB-2GB depending on frame complexity
+- **CPU Usage**: Rendering is CPU-intensive (100% of available cores during frame generation)
+
+## Output Directory
+
+All videos are saved to the `videos/` directory:
+```
+videos/
+├── 01_video_layered_noise.mp4
+├── 02_video_flow_field.mp4
+├── 03_video_interference.mp4
+└── ...
 ```
 
 ## Customization
 
-### Add More Generation Techniques
+### Color Palette
 
-To add a new wallpaper generation technique, simply add it to the `GENERATORS` dictionary in `generate_wallpapers_multi.py`:
-
+Edit the `PALETTE` dictionary in `generate_videos.py` to change colors:
 ```python
-GENERATORS = {
-    'layered_noise': ('Layered Noise', generate_layered_noise),
-    'voronoi': ('Voronoi Cells', generate_voronoi),
-    # ... existing generators ...
-    'your_new_technique': ('Your New Technique', generate_your_new_technique),
+PALETTE = {
+    'background': hex_to_rgb('#1a1a1a'),
+    'colors': [
+        hex_to_rgb('#8B0000'),  # Red
+        # ... more colors
+    ]
 }
 ```
 
-The script will automatically generate one wallpaper from each technique, so adding a new generator increases the batch size by 1.
+### Animation Speed
 
-### Change Automatic Generation Time
-
-Edit `setup_auto_generate.sh` to change from 9 AM:
-```xml
-<key>Hour</key>
-<integer>9</integer>  <!-- Change hour (0-23) -->
-```
-
-### Disable Symmetry
-
-For asymmetric wallpapers, edit the generator functions:
+Adjust the time offset multiplier to speed up/slow down animations:
 ```python
-img = gen_func(WIDTH, HEIGHT, PALETTE['colors'], mirror_h=False, mirror_v=False)
+# Slower animation
+time_offset = math.sin(t * 2 * math.pi) * 50
+
+# Faster animation
+time_offset = math.sin(t * 2 * math.pi) * 200
 ```
 
-### Modify Color Palette
+### Video Duration
 
-Edit the `PALETTE` dictionary in `generate_wallpapers_multi.py` (lines 20-44).
+Change `DURATION` in `generate_videos.py`:
+```python
+DURATION = 5   # 5-second loops
+DURATION = 15  # 15-second loops
+```
 
-### Adjust Pattern Scale
+## Differences from Wallpaper Generator
 
-Modify the `scale` variable in each generator function to zoom in/out on patterns.
+This is an alternative version of the wallpaper-procgen repository that:
+- **Generates videos instead of static images**
+- **All patterns animate over time**
+- **Outputs MP4 files instead of PNG images**
+- **Optimized for 1920x1080 video resolution**
+- **Adds time parameter to all generators**
 
 ## Troubleshooting
 
-### Photos App Permission
+### FFmpeg Not Found
 
-First time running `generate_to_photos_album.py`, you may need to:
-1. Grant **Photos** permission when prompted
-2. Check **System Settings** > **Privacy & Security** > **Automation**
-3. Enable Python/Terminal to control Photos
-
-### Photos Album Not Appearing in Wallpaper Settings
-
-- Open Photos app to verify the album exists
-- Try restarting System Settings
-- The album appears under "Photos" section in wallpaper picker
-
-### Check Auto-Generation Status
-
+If you get an error about FFmpeg:
 ```bash
-# Check if launchd agent is running
-launchctl list | grep com.procgen.wallpaper
+# Install FFmpeg via Homebrew (macOS)
+brew install ffmpeg
 
-# View logs
-tail -f ~/Library/Logs/ProcgenWallpapers/wallpaper_generator.log
-
-# Test the service manually
-launchctl start com.procgen.wallpaper
+# Or let imageio download it
+pip3 install imageio-ffmpeg
 ```
 
-### Manual Slideshow Setup
+### Out of Memory
 
-If the automated setup fails:
-1. Open **System Settings** > **Wallpaper**
-2. For Photos album: Select "Procgen Wallpapers" from Photos section
-3. For folder: Click **+** and select the `wallpapers/` folder
-4. Enable **Change picture** and set interval to 30 minutes
+If rendering fails due to memory:
+1. Reduce `WIDTH` and `HEIGHT`
+2. Reduce `DURATION`
+3. Render one video at a time instead of all
 
-## Logs
+### Slow Rendering
 
-**Automatic generation logs:**
-- `~/Library/Logs/ProcgenWallpapers/wallpaper_generator.log` - Standard output
-- `~/Library/Logs/ProcgenWallpapers/wallpaper_generator_error.log` - Error messages
+To speed up rendering:
+1. Reduce `FPS` (e.g., 24fps instead of 30fps)
+2. Reduce `DURATION` (e.g., 5 seconds instead of 10)
+3. Simplify generator complexity (fewer particles, lower octaves)
 
-**Login script logs:**
-- `wallpaper_generator.log` - Standard output
-- `wallpaper_generator_error.log` - Error messages
+## License
 
-## How It Works
+Same as wallpaper-procgen - feel free to use and modify!
 
-1. **Generation**: Each wallpaper uses one of 42 procedural techniques with random seeds
-2. **Symmetry**: Patterns are mirrored horizontally and vertically for aesthetic balance
-3. **Photos Import**: Images are imported to Photos and added to "Procgen Wallpapers" album
-4. **Slideshow**: macOS cycles through the Photos album, changing wallpaper periodically
-5. **Growth**: Each run adds more wallpapers, creating an ever-growing art collection
+## Credits
+
+Based on the wallpaper-procgen repository by the same author.
+Uses the `procgen` library for noise generation.

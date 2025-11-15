@@ -1456,8 +1456,8 @@ def generate_reaction_diffusion(width, height, palette, mirror_h=True, mirror_v=
     diffusion_b = 0.5
     dt = 1.0
 
-    # Run simulation
-    iterations = 5000
+    # Run simulation (reduced for performance)
+    iterations = 50
 
     for iteration in range(iterations):
         new_a = [[0.0 for _ in range(gen_width)] for _ in range(gen_height)]
@@ -1527,7 +1527,7 @@ def generate_strange_attractor(width, height, palette, mirror_h=True, mirror_v=T
     # Initialize starting point
     x, y, z = 0.1, 0.1, 0.1
     dt = 0.01
-    iterations = 50000
+    iterations = 20000  # Reduced for performance
 
     # Store trajectory points
     points_2d = []
@@ -1614,7 +1614,7 @@ def generate_dla(width, height, palette, mirror_h=True, mirror_v=True):
     stuck_time = [[0 for _ in range(gen_width)] for _ in range(gen_height)]
     stuck_time[center_y][center_x] = 1
 
-    num_particles = 10000
+    num_particles = 3000  # Reduced for performance
     current_time = 1
 
     for particle_idx in range(num_particles):
@@ -2771,7 +2771,8 @@ def generate_liquid_distortion(width, height, palette, mirror_h=True, mirror_v=T
         max_value = 0
 
         for _ in range(octaves):
-            value += amplitude * noise.pnoise3(x * frequency, y * frequency, t * frequency, octaves=1)
+            # Use time offset to simulate 3D noise
+            value += amplitude * perlin2D(x * frequency + t * 10, y * frequency + t * 10)
             max_value += amplitude
             amplitude *= 0.5
             frequency *= 2.0
@@ -2888,7 +2889,7 @@ def generate_glitch_effects(width, height, palette, mirror_h=True, mirror_v=True
     base_pixels = {}
     for y in range(gen_height):
         for x in range(gen_width):
-            n = noise.pnoise2(x * scale, y * scale, octaves=4)
+            n = perlin2D(x * scale, y * scale)
             t = (n + 1) / 2
             base_pixels[(x, y)] = get_color_from_palette(t, palette)
 
@@ -2899,7 +2900,7 @@ def generate_glitch_effects(width, height, palette, mirror_h=True, mirror_v=True
         for x in range(gen_width):
             if glitch_type == 'scan_line':
                 # Analog scan line jitter
-                jitter = int(noise.pnoise1(y * 0.1, octaves=2) * 20)
+                jitter = int(perlin2D(0, y * 0.1) * 20)
                 source_x = (x + jitter) % gen_width
                 color = base_pixels[(source_x, y)]
 
@@ -2922,7 +2923,7 @@ def generate_glitch_effects(width, height, palette, mirror_h=True, mirror_v=True
 
             else:  # vertical_jump
                 # Vertical displacement
-                jump = int(noise.pnoise1(x * 0.05, octaves=1) * 50)
+                jump = int(perlin2D(x * 0.05, 0) * 50)
                 source_y = (y + jump) % gen_height
                 color = base_pixels[(x, source_y)]
 
@@ -3022,8 +3023,8 @@ def generate_kaleidoscope_effect(width, height, palette, mirror_h=True, mirror_v
             pattern_x = radius * math.cos(folded_angle)
             pattern_y = radius * math.sin(folded_angle)
 
-            n1 = noise.pnoise2(pattern_x * scale, pattern_y * scale, octaves=4)
-            n2 = noise.pnoise2(pattern_x * scale + 100, pattern_y * scale + 100, octaves=4)
+            n1 = perlin2D(pattern_x * scale, pattern_y * scale)
+            n2 = perlin2D(pattern_x * scale + 100, pattern_y * scale + 100)
 
             # Combine with spiral
             combined = (n1 + n2 + math.sin(spiral)) / 3
@@ -3157,10 +3158,10 @@ def main():
         print(f"  Adding logo: {os.path.basename(selected_logo)}")
         img = add_logo(img, selected_logo)
 
-        # Save with timestamp to ensure unique filenames
+        # Save with number prefix for curation
         import time
         timestamp = int(time.time() * 1000) % 1000000  # Use milliseconds modulo to keep it short
-        output_file = os.path.join(output_dir, f'wallpaper_{gen_id}_{logo_name}_{timestamp}.png')
+        output_file = os.path.join(output_dir, f'{i+1:02d}_wallpaper_{gen_id}_{logo_name}_{timestamp}.png')
         img.save(output_file, 'PNG')
         print(f"  ✓ Saved: {output_file}\n")
 
