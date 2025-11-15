@@ -595,6 +595,293 @@ def generate_grid_distortion_frame(width, height, palette, t, mirror_h=True, mir
 
     return img
 
+def generate_bezier_curves_frame(width, height, palette, t, mirror_h=True, mirror_v=True):
+    """
+    Organic shapes with animated Bezier curves.
+    t: time parameter from 0 to 1 (loops seamlessly)
+    """
+    img = Image.new('RGB', (width, height), PALETTE['background'])
+    draw = ImageDraw.Draw(img, 'RGBA')
+
+    gen_width = (width // 2) if mirror_h else width
+    gen_height = (height // 2) if mirror_v else height
+
+    # Animated rotation angle
+    time_angle = t * 2 * math.pi
+
+    # Generate smooth organic shapes
+    num_shapes = 15
+    random.seed(42)  # Consistent shapes across frames
+
+    for shape_idx in range(num_shapes):
+        # Random start position in generation region
+        start_x = random.randint(100, gen_width - 100)
+        start_y = random.randint(100, gen_height - 100)
+
+        # Create organic curved path
+        points = []
+        num_segments = 20
+        base_angle = random.uniform(0, math.pi * 2)
+        angle = base_angle + time_angle * 0.3  # Rotate over time
+
+        for i in range(num_segments):
+            # Use noise to create smooth curves
+            noise_x = perlin2D(i * 0.3 + shape_idx, t * 5) * 50
+            noise_y = perlin2D(t * 5, i * 0.3 + shape_idx) * 50
+
+            angle += random.uniform(-0.3, 0.3)
+            step = 30
+
+            x = start_x + math.cos(angle) * step * i + noise_x
+            y = start_y + math.sin(angle) * step * i + noise_y
+
+            # Keep within generation region
+            x = max(0, min(gen_width, x))
+            y = max(0, min(gen_height, y))
+
+            points.append((x, y))
+
+        # Draw smooth curve
+        if len(points) > 1:
+            value = (shape_idx / num_shapes + t) % 1.0
+            color = get_color_from_palette(value, palette)
+            alpha = random.randint(40, 100)
+
+            draw.line(points, fill=color + (alpha,), width=random.randint(2, 5), joint='curve')
+
+            # Mirror the curve
+            if mirror_h:
+                mirrored_h = [(width - 1 - x, y) for x, y in points]
+                draw.line(mirrored_h, fill=color + (alpha,), width=random.randint(2, 5), joint='curve')
+
+            if mirror_v:
+                mirrored_v = [(x, height - 1 - y) for x, y in points]
+                draw.line(mirrored_v, fill=color + (alpha,), width=random.randint(2, 5), joint='curve')
+
+            if mirror_h and mirror_v:
+                mirrored_both = [(width - 1 - x, height - 1 - y) for x, y in points]
+                draw.line(mirrored_both, fill=color + (alpha,), width=random.randint(2, 5), joint='curve')
+
+    return img
+
+def generate_physarum_frame(width, height, palette, t, mirror_h=True, mirror_v=True):
+    """
+    Slime mold simulation with animated particle behavior.
+    t: time parameter from 0 to 1 (loops seamlessly)
+    """
+    img = Image.new('RGB', (width, height), PALETTE['background'])
+    pixels = img.load()
+
+    gen_width = (width // 2) if mirror_h else width
+    gen_height = (height // 2) if mirror_v else height
+
+    # Time-based variation in particle initialization
+    time_seed = int(t * 1000)
+    random.seed(42 + time_seed)  # Varies with time but deterministic
+
+    # Initialize particle agents
+    num_particles = 3000  # Reduced for faster generation
+    particles = []
+
+    class Particle:
+        def __init__(self):
+            self.x = random.randint(0, gen_width - 1)
+            self.y = random.randint(0, gen_height - 1)
+            self.angle = random.uniform(0, math.pi * 2) + t * math.pi
+
+    for _ in range(num_particles):
+        particles.append(Particle())
+
+    # Create trail map
+    trail = [[0.0 for _ in range(gen_width)] for _ in range(gen_height)]
+
+    # Simulate slime mold growth (fewer iterations for speed)
+    iterations = 60
+    sensor_angle = 0.4
+    sensor_distance = 9
+    turn_angle = 0.4
+
+    for iteration in range(iterations):
+        for particle in particles:
+            # Sense in three directions
+            x, y, angle = int(particle.x), int(particle.y), particle.angle
+
+            if 0 <= x < gen_width and 0 <= y < gen_height:
+                # Forward sensor
+                fx = int(x + math.cos(angle) * sensor_distance) % gen_width
+                fy = int(y + math.sin(angle) * sensor_distance) % gen_height
+                forward = trail[fy][fx]
+
+                # Left sensor
+                lx = int(x + math.cos(angle - sensor_angle) * sensor_distance) % gen_width
+                ly = int(y + math.sin(angle - sensor_angle) * sensor_distance) % gen_height
+                left = trail[ly][lx]
+
+                # Right sensor
+                rx = int(x + math.cos(angle + sensor_angle) * sensor_distance) % gen_width
+                ry = int(y + math.sin(angle + sensor_angle) * sensor_distance) % gen_height
+                right = trail[ry][rx]
+
+                # Adjust angle based on sensors
+                if forward > left and forward > right:
+                    pass  # Continue forward
+                elif forward < left and forward < right:
+                    particle.angle += random.choice([-turn_angle, turn_angle])
+                elif left < right:
+                    particle.angle += turn_angle
+                elif right < left:
+                    particle.angle -= turn_angle
+
+                # Move particle
+                particle.x = (particle.x + math.cos(particle.angle) * 2) % gen_width
+                particle.y = (particle.y + math.sin(particle.angle) * 2) % gen_height
+
+                # Deposit trail
+                px, py = int(particle.x), int(particle.y)
+                if 0 <= px < gen_width and 0 <= py < gen_height:
+                    trail[py][px] = min(1.0, trail[py][px] + 0.1)
+
+        # Diffuse and decay trails (optimized)
+        if iteration % 3 == 0:  # Only diffuse every 3 iterations
+            new_trail = [[0.0 for _ in range(gen_width)] for _ in range(gen_height)]
+            for y in range(1, gen_height - 1):
+                for x in range(1, gen_width - 1):
+                    avg = (trail[y][x] + trail[y-1][x] + trail[y+1][x] +
+                           trail[y][x-1] + trail[y][x+1]) / 5
+                    new_trail[y][x] = avg * 0.95  # Decay
+            trail = new_trail
+
+    # Render trail map to image
+    for y in range(gen_height):
+        for x in range(gen_width):
+            value = trail[y][x]
+            color = get_color_from_palette(value, palette)
+
+            # Set pixel and apply mirroring
+            pixels[x, y] = color
+            if mirror_h:
+                pixels[width - 1 - x, y] = color
+            if mirror_v:
+                pixels[x, height - 1 - y] = color
+            if mirror_h and mirror_v:
+                pixels[width - 1 - x, height - 1 - y] = color
+
+    return img
+
+def generate_penrose_tiling_frame(width, height, palette, t, mirror_h=True, mirror_v=True):
+    """
+    Penrose tiling with animated phase shift.
+    t: time parameter from 0 to 1 (loops seamlessly)
+    """
+    img = Image.new('RGB', (width, height), PALETTE['background'])
+    pixels = img.load()
+
+    gen_width = (width // 2) if mirror_h else width
+    gen_height = (height // 2) if mirror_v else height
+
+    # Golden ratio and animated phase
+    phi = (1 + math.sqrt(5)) / 2
+    scale = 100
+    time_phase = math.sin(t * 2 * math.pi) * 2  # Animated phase shift
+
+    for y in range(gen_height):
+        for x in range(gen_width):
+            # Create pseudo-Penrose pattern with animated phase
+            sum_val = 0
+            for i in range(5):
+                angle = i * 2 * math.pi / 5
+                cos_a = math.cos(angle)
+                sin_a = math.sin(angle)
+
+                # Project point onto rotated grid with time phase
+                proj = (x * cos_a + y * sin_a) / scale
+
+                # Add wave pattern with time variation
+                sum_val += math.sin(proj * phi + time_phase) * math.cos(proj / phi)
+
+            # Normalize and add noise
+            value = (sum_val / 5 + 1) / 2
+            noise = perlin2D(x * 0.002, y * 0.002) * 0.3
+            value = max(0, min(1, value + noise))
+
+            color = get_color_from_palette(value, palette)
+
+            # Set pixel and apply mirroring
+            pixels[x, y] = color
+            if mirror_h:
+                pixels[width - 1 - x, y] = color
+            if mirror_v:
+                pixels[x, height - 1 - y] = color
+            if mirror_h and mirror_v:
+                pixels[width - 1 - x, height - 1 - y] = color
+
+    return img
+
+def generate_pixel_sprites_frame(width, height, palette, t, mirror_h=True, mirror_v=True):
+    """
+    Retro pixel sprites with animated color cycling.
+    t: time parameter from 0 to 1 (loops seamlessly)
+    """
+    img = Image.new('RGB', (width, height), PALETTE['background'])
+    pixels = img.load()
+
+    gen_width = (width // 2) if mirror_h else width
+    gen_height = (height // 2) if mirror_v else height
+
+    # Generate multiple pixel sprites
+    sprite_size = 40
+    num_sprites_x = gen_width // (sprite_size * 2)
+    num_sprites_y = gen_height // (sprite_size * 2)
+
+    # Animated color shift
+    color_shift = t
+
+    random.seed(42)  # Consistent sprite shapes
+
+    for sy in range(num_sprites_y):
+        for sx in range(num_sprites_x):
+            # Random sprite template
+            sprite_half_width = sprite_size // 2
+            sprite_data = [[random.random() > 0.6 for _ in range(sprite_half_width)]
+                          for _ in range(sprite_size)]
+
+            # Position sprite
+            base_x = sx * sprite_size * 2 + sprite_size // 2
+            base_y = sy * sprite_size * 2 + sprite_size // 2
+
+            # Animated sprite color
+            value = (random.random() + color_shift) % 1.0
+            sprite_color = get_color_from_palette(value, palette)
+
+            # Draw sprite with horizontal mirroring (classic sprite style)
+            for py in range(sprite_size):
+                for px in range(sprite_half_width):
+                    if sprite_data[py][px]:
+                        # Left half
+                        x1 = base_x + px
+                        y1 = base_y + py
+                        if 0 <= x1 < gen_width and 0 <= y1 < gen_height:
+                            pixels[x1, y1] = sprite_color
+                            if mirror_h:
+                                pixels[width - 1 - x1, y1] = sprite_color
+                            if mirror_v:
+                                pixels[x1, height - 1 - y1] = sprite_color
+                            if mirror_h and mirror_v:
+                                pixels[width - 1 - x1, height - 1 - y1] = sprite_color
+
+                        # Right half (mirror within sprite)
+                        x2 = base_x + sprite_size - 1 - px
+                        if 0 <= x2 < gen_width and 0 <= y1 < gen_height:
+                            pixels[x2, y1] = sprite_color
+                            if mirror_h:
+                                pixels[width - 1 - x2, y1] = sprite_color
+                            if mirror_v:
+                                pixels[x2, height - 1 - y1] = sprite_color
+                            if mirror_h and mirror_v:
+                                pixels[width - 1 - x2, height - 1 - y1] = sprite_color
+
+    return img
+
 # ============================================================================
 # VIDEO GENERATORS DICTIONARY
 # ============================================================================
@@ -610,6 +897,10 @@ GENERATORS = {
     'spiral': ('Spiral Patterns', generate_spiral_frame),
     'rings': ('Concentric Rings', generate_rings_frame),
     'grid_distortion': ('Grid Distortion', generate_grid_distortion_frame),
+    'bezier_curves': ('Bezier Curves', generate_bezier_curves_frame),
+    'physarum': ('Physarum Slime Mold', generate_physarum_frame),
+    'penrose_tiling': ('Penrose Tiling', generate_penrose_tiling_frame),
+    'pixel_sprites': ('Pixel Sprites', generate_pixel_sprites_frame),
 }
 
 # ============================================================================
