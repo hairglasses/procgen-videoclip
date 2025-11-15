@@ -942,7 +942,16 @@ def generate_all_videos():
     print(f"Output directory: {OUTPUT_DIR}/")
     print(f"Settings: {WIDTH}x{HEIGHT} @ {FPS}fps, {DURATION}s duration\n")
 
-    for idx, (gen_id, (gen_name, gen_func)) in enumerate(GENERATORS.items(), 1):
+    # Shuffle the generator order for varied processing
+    generator_items = list(GENERATORS.items())
+    random.shuffle(generator_items)
+
+    print("Generator order (shuffled):")
+    for idx, (gen_id, (gen_name, _)) in enumerate(generator_items, 1):
+        print(f"  {idx:2d}. {gen_name}")
+    print()
+
+    for idx, (gen_id, (gen_name, gen_func)) in enumerate(generator_items, 1):
         print(f"\n[{idx}/{len(GENERATORS)}] {gen_name}")
         print("-" * 60)
 
