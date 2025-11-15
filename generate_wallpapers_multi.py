@@ -2751,6 +2751,297 @@ def generate_gaussian_tiling(width, height, palette, mirror_h=True, mirror_v=Tru
 
     return img
 
+def generate_liquid_distortion(width, height, palette, mirror_h=True, mirror_v=True):
+    """Liquid shape distortions with psychedelic motion inspired by liquid-shape-distortions."""
+    img = Image.new('RGB', (width, height))
+    pixels = img.load()
+
+    gen_width = (width // 2) if mirror_h else width
+    gen_height = (height // 2) if mirror_v else height
+
+    scale = 0.003
+    time = random.random() * 100
+    layers = 6  # Fractal Brownian Motion layers
+
+    # Fractal Brownian motion for liquid distortion
+    def fbm(x, y, t, octaves=6):
+        value = 0
+        amplitude = 1.0
+        frequency = 1.0
+        max_value = 0
+
+        for _ in range(octaves):
+            value += amplitude * noise.pnoise3(x * frequency, y * frequency, t * frequency, octaves=1)
+            max_value += amplitude
+            amplitude *= 0.5
+            frequency *= 2.0
+
+        return value / max_value
+
+    for y in range(gen_height):
+        for x in range(gen_width):
+            # Multi-layered FBM for liquid effect
+            distort_x = fbm(x * scale, y * scale, time, layers)
+            distort_y = fbm(x * scale + 100, y * scale + 100, time + 50, layers)
+
+            # Apply distortion
+            dx = x + distort_x * 50
+            dy = y + distort_y * 50
+
+            # Secondary distortion for psychedelic ripples
+            ripple = math.sin(dx * 0.05) * math.cos(dy * 0.05)
+            combined = (distort_x + distort_y + ripple) / 3
+
+            # Map to palette
+            t = (combined + 1) / 2  # Normalize to 0-1
+            color = get_color_from_palette(t, palette)
+
+            pixels[x, y] = color
+            if mirror_h:
+                pixels[width - 1 - x, y] = color
+            if mirror_v:
+                pixels[x, height - 1 - y] = color
+            if mirror_h and mirror_v:
+                pixels[width - 1 - x, height - 1 - y] = color
+
+    return img
+
+def generate_fractal_sets(width, height, palette, mirror_h=True, mirror_v=True):
+    """Classic fractals (Mandelbrot, Julia, Burning Ship) inspired by shader-fractals."""
+    img = Image.new('RGB', (width, height))
+    pixels = img.load()
+
+    gen_width = (width // 2) if mirror_h else width
+    gen_height = (height // 2) if mirror_v else height
+
+    # Randomly choose fractal type
+    fractal_type = random.choice(['mandelbrot', 'julia', 'burning_ship'])
+
+    # Julia set constant
+    c_real = random.uniform(-0.8, 0.8)
+    c_imag = random.uniform(-0.8, 0.8)
+
+    # Zoom and center
+    zoom = random.uniform(0.5, 2.0)
+    center_x = random.uniform(-0.5, 0.5)
+    center_y = random.uniform(-0.5, 0.5)
+
+    max_iter = 100
+
+    for y in range(gen_height):
+        for x in range(gen_width):
+            # Map pixel to complex plane
+            zx = ((x / gen_width) - 0.5) * 4 / zoom + center_x
+            zy = ((y / gen_height) - 0.5) * 4 / zoom + center_y
+
+            if fractal_type == 'mandelbrot':
+                cx, cy = zx, zy
+            elif fractal_type == 'julia':
+                cx, cy = c_real, c_imag
+            else:  # burning_ship
+                cx, cy = zx, zy
+
+            iteration = 0
+            while zx * zx + zy * zy < 4 and iteration < max_iter:
+                if fractal_type == 'burning_ship':
+                    # Burning Ship uses absolute values
+                    zx, zy = abs(zx), abs(zy)
+
+                tmp = zx * zx - zy * zy + cx
+                zy = 2 * zx * zy + cy
+                zx = tmp
+                iteration += 1
+
+            # Smooth coloring
+            if iteration < max_iter:
+                # Smooth iteration count
+                log_zn = math.log(zx * zx + zy * zy) / 2
+                nu = math.log(log_zn / math.log(2)) / math.log(2)
+                iteration = iteration + 1 - nu
+
+            # Map to palette
+            t = (iteration / max_iter) % 1.0
+            color = get_color_from_palette(t, palette)
+
+            pixels[x, y] = color
+            if mirror_h:
+                pixels[width - 1 - x, y] = color
+            if mirror_v:
+                pixels[x, height - 1 - y] = color
+            if mirror_h and mirror_v:
+                pixels[width - 1 - x, height - 1 - y] = color
+
+    return img
+
+def generate_glitch_effects(width, height, palette, mirror_h=True, mirror_v=True):
+    """Analog and digital glitch effects inspired by KinoGlitch."""
+    img = Image.new('RGB', (width, height))
+    pixels = img.load()
+
+    gen_width = (width // 2) if mirror_h else width
+    gen_height = (height // 2) if mirror_v else height
+
+    # Base pattern using noise
+    scale = 0.005
+
+    # Generate base image
+    base_pixels = {}
+    for y in range(gen_height):
+        for x in range(gen_width):
+            n = noise.pnoise2(x * scale, y * scale, octaves=4)
+            t = (n + 1) / 2
+            base_pixels[(x, y)] = get_color_from_palette(t, palette)
+
+    # Apply glitch effects
+    glitch_type = random.choice(['scan_line', 'rgb_drift', 'block_corruption', 'vertical_jump'])
+
+    for y in range(gen_height):
+        for x in range(gen_width):
+            if glitch_type == 'scan_line':
+                # Analog scan line jitter
+                jitter = int(noise.pnoise1(y * 0.1, octaves=2) * 20)
+                source_x = (x + jitter) % gen_width
+                color = base_pixels[(source_x, y)]
+
+            elif glitch_type == 'rgb_drift':
+                # RGB channel separation
+                r = base_pixels[(x, y)][0]
+                g = base_pixels[((x + 5) % gen_width, y)][1]
+                b = base_pixels[((x - 5) % gen_width, y)][2]
+                color = (r, g, b)
+
+            elif glitch_type == 'block_corruption':
+                # Digital block corruption
+                block_size = 20
+                if random.random() < 0.1:
+                    block_x = (x // block_size) * block_size
+                    block_y = (y // block_size) * block_size
+                    color = base_pixels[(block_x % gen_width, block_y % gen_height)]
+                else:
+                    color = base_pixels[(x, y)]
+
+            else:  # vertical_jump
+                # Vertical displacement
+                jump = int(noise.pnoise1(x * 0.05, octaves=1) * 50)
+                source_y = (y + jump) % gen_height
+                color = base_pixels[(x, source_y)]
+
+            pixels[x, y] = color
+            if mirror_h:
+                pixels[width - 1 - x, y] = color
+            if mirror_v:
+                pixels[x, height - 1 - y] = color
+            if mirror_h and mirror_v:
+                pixels[width - 1 - x, height - 1 - y] = color
+
+    return img
+
+def generate_raymarched_tunnel(width, height, palette, mirror_h=True, mirror_v=True):
+    """Raymarched infinite tunnel effects inspired by shaderbox."""
+    img = Image.new('RGB', (width, height))
+    pixels = img.load()
+
+    gen_width = (width // 2) if mirror_h else width
+    gen_height = (height // 2) if mirror_v else height
+
+    time = random.random() * 10
+
+    for y in range(gen_height):
+        for x in range(gen_width):
+            # Center coordinates
+            cx = (x - gen_width / 2) / gen_height
+            cy = (y - gen_height / 2) / gen_height
+
+            # Convert to polar coordinates for tunnel
+            angle = math.atan2(cy, cx)
+            radius = math.sqrt(cx * cx + cy * cy)
+
+            if radius < 0.01:
+                radius = 0.01  # Avoid division by zero
+
+            # Tunnel depth
+            depth = 1.0 / radius + time
+
+            # Tunnel texture (checkerboard pattern)
+            u = angle / math.pi  # -1 to 1
+            v = depth
+
+            checker_u = int(u * 10) % 2
+            checker_v = int(v * 10) % 2
+            checker = (checker_u + checker_v) % 2
+
+            # Distance fog
+            fog = 1.0 / (1.0 + depth * 0.1)
+
+            # Map to palette with checker pattern
+            t = (checker * 0.5 + fog * 0.5)
+            color = get_color_from_palette(t, palette)
+
+            pixels[x, y] = color
+            if mirror_h:
+                pixels[width - 1 - x, y] = color
+            if mirror_v:
+                pixels[x, height - 1 - y] = color
+            if mirror_h and mirror_v:
+                pixels[width - 1 - x, height - 1 - y] = color
+
+    return img
+
+def generate_kaleidoscope_effect(width, height, palette, mirror_h=True, mirror_v=True):
+    """Kaleidoscope and symmetry effects inspired by MusicVisualizer."""
+    img = Image.new('RGB', (width, height))
+    pixels = img.load()
+
+    gen_width = (width // 2) if mirror_h else width
+    gen_height = (height // 2) if mirror_v else height
+
+    # Kaleidoscope parameters
+    segments = random.choice([4, 6, 8, 12])  # N-fold symmetry
+    scale = 0.003
+
+    for y in range(gen_height):
+        for x in range(gen_width):
+            # Center coordinates
+            cx = x - gen_width / 2
+            cy = y - gen_height / 2
+
+            # Polar coordinates
+            angle = math.atan2(cy, cx)
+            radius = math.sqrt(cx * cx + cy * cy)
+
+            # Kaleidoscope reflection
+            segment_angle = (2 * math.pi) / segments
+            folded_angle = angle % segment_angle
+            if (int(angle / segment_angle) % 2) == 1:
+                folded_angle = segment_angle - folded_angle
+
+            # Spiral pattern
+            spiral = folded_angle + radius * 0.05
+
+            # Generate pattern using noise
+            pattern_x = radius * math.cos(folded_angle)
+            pattern_y = radius * math.sin(folded_angle)
+
+            n1 = noise.pnoise2(pattern_x * scale, pattern_y * scale, octaves=4)
+            n2 = noise.pnoise2(pattern_x * scale + 100, pattern_y * scale + 100, octaves=4)
+
+            # Combine with spiral
+            combined = (n1 + n2 + math.sin(spiral)) / 3
+
+            # Map to palette
+            t = (combined + 1) / 2
+            color = get_color_from_palette(t, palette)
+
+            pixels[x, y] = color
+            if mirror_h:
+                pixels[width - 1 - x, y] = color
+            if mirror_v:
+                pixels[x, height - 1 - y] = color
+            if mirror_h and mirror_v:
+                pixels[width - 1 - x, height - 1 - y] = color
+
+    return img
+
 # ============================================================================
 # MAIN GENERATION
 # ============================================================================
@@ -2793,6 +3084,11 @@ GENERATORS = {
     'wang_tiles': ('Wang Tiles', generate_wang_tiles),
     'graph_cut_synthesis': ('Graph-Cut Synthesis', generate_graph_cut_synthesis),
     'gaussian_tiling': ('Gaussian Tiling', generate_gaussian_tiling),
+    'liquid_distortion': ('Liquid Distortion', generate_liquid_distortion),
+    'fractal_sets': ('Fractal Sets', generate_fractal_sets),
+    'glitch_effects': ('Glitch Effects', generate_glitch_effects),
+    'raymarched_tunnel': ('Raymarched Tunnel', generate_raymarched_tunnel),
+    'kaleidoscope_effect': ('Kaleidoscope Effect', generate_kaleidoscope_effect),
 }
 
 def add_logo(img, logo_path):
