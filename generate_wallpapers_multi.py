@@ -1040,6 +1040,1278 @@ def generate_template_pixel_art(width, height, palette, mirror_h=True, mirror_v=
 
     return img
 
+def generate_raytraced_sdf(width, height, palette, mirror_h=True, mirror_v=True):
+    """Raytraced Signed Distance Field geometry inspired by retrace.gl."""
+    img = Image.new('RGB', (width, height), PALETTE['background'])
+    pixels = img.load()
+
+    # Calculate generation region based on mirroring
+    gen_width = (width // 2) if mirror_h else width
+    gen_height = (height // 2) if mirror_v else height
+
+    # Define multiple SDF primitives (spheres and boxes)
+    num_shapes = 8
+    shapes = []
+    for _ in range(num_shapes):
+        shapes.append({
+            'x': random.randint(0, gen_width),
+            'y': random.randint(0, gen_height),
+            'radius': random.randint(100, 300),
+            'type': random.choice(['sphere', 'box']),
+            'color_offset': random.random()
+        })
+
+    for y in range(gen_height):
+        for x in range(gen_width):
+            # Calculate distance to nearest shape (SDF)
+            min_dist = float('inf')
+            nearest_shape = None
+
+            for shape in shapes:
+                dx = x - shape['x']
+                dy = y - shape['y']
+
+                if shape['type'] == 'sphere':
+                    # Sphere SDF
+                    dist = math.sqrt(dx * dx + dy * dy) - shape['radius']
+                else:
+                    # Box SDF (approximation)
+                    abs_dx = abs(dx)
+                    abs_dy = abs(dy)
+                    box_size = shape['radius']
+                    dist = math.sqrt(max(0, abs_dx - box_size)**2 + max(0, abs_dy - box_size)**2)
+
+                if abs(dist) < abs(min_dist):
+                    min_dist = dist
+                    nearest_shape = shape
+
+            # Create CSG-like effect with smooth blending
+            t = 1 / (1 + math.exp(-min_dist / 50))  # Smooth step function
+
+            # Add raytraced-style shading
+            if nearest_shape:
+                base_t = nearest_shape['color_offset']
+                # Simulate lighting based on distance gradient
+                shade = max(0, min(1, t * 0.7 + 0.3))
+                color = get_color_from_palette(base_t, palette)
+                color = tuple(int(c * shade) for c in color)
+            else:
+                noise = perlin2D(x * 0.002, y * 0.002)
+                t_noise = (noise + 1) / 2
+                color = get_color_from_palette(t_noise, palette)
+
+            # Set pixel and apply mirroring
+            pixels[x, y] = color
+            if mirror_h:
+                pixels[width - 1 - x, y] = color
+            if mirror_v:
+                pixels[x, height - 1 - y] = color
+            if mirror_h and mirror_v:
+                pixels[width - 1 - x, height - 1 - y] = color
+
+    return img
+
+def generate_pathtraced_terrain(width, height, palette, mirror_h=True, mirror_v=True):
+    """Path-traced procedural terrain inspired by THREE.js-PathTracing-Renderer."""
+    img = Image.new('RGB', (width, height), PALETTE['background'])
+    pixels = img.load()
+
+    # Calculate generation region based on mirroring
+    gen_width = (width // 2) if mirror_h else width
+    gen_height = (height // 2) if mirror_v else height
+
+    # Generate terrain heightmap
+    scale = 0.002
+
+    for y in range(gen_height):
+        for x in range(gen_width):
+            # Multi-octave terrain noise
+            elevation = combined(perlin2D, x * scale, y * scale, octaves=6, persistence=0.5)
+
+            # Add ridges for mountainous features
+            ridge = abs(simplex2D(x * scale * 0.5, y * scale * 0.5))
+            elevation = elevation * 0.7 + ridge * 0.3
+
+            # Normalize to 0-1
+            elevation = (elevation + 1) / 2
+
+            # Simulate atmospheric perspective (retro 80s style)
+            distance_from_bottom = y / gen_height
+            atmosphere = 1 - (distance_from_bottom * 0.4)
+
+            # Map elevation to colors with atmospheric fade
+            t = elevation * atmosphere
+            color = get_color_from_palette(t, palette)
+
+            # Add subtle scan-line effect for retro aesthetic
+            if y % 3 == 0:
+                color = tuple(int(c * 0.95) for c in color)
+
+            # Set pixel and apply mirroring
+            pixels[x, y] = color
+            if mirror_h:
+                pixels[width - 1 - x, y] = color
+            if mirror_v:
+                pixels[x, height - 1 - y] = color
+            if mirror_h and mirror_v:
+                pixels[width - 1 - x, height - 1 - y] = color
+
+    return img
+
+def generate_voxel_structures(width, height, palette, mirror_h=True, mirror_v=True):
+    """Voxel-based L-system structures inspired by voxgen."""
+    img = Image.new('RGB', (width, height), PALETTE['background'])
+    pixels = img.load()
+
+    # Calculate generation region based on mirroring
+    gen_width = (width // 2) if mirror_h else width
+    gen_height = (height // 2) if mirror_v else height
+
+    # Voxel/block size for retro blocky aesthetic
+    voxel_size = 20
+
+    # Generate L-system-inspired growth pattern
+    # Simple branching structure
+    class Voxel:
+        def __init__(self, x, y, generation):
+            self.x = x
+            self.y = y
+            self.generation = generation
+
+    voxels = []
+
+    # Start from center
+    center_x = gen_width // 2
+    center_y = gen_height // 2
+
+    # Seed voxels
+    stack = [(center_x, center_y, 0, 0)]  # x, y, generation, angle
+    visited = set()
+
+    max_generations = 6
+    branch_probability = 0.7
+
+    while stack and len(voxels) < 500:
+        x, y, gen, angle = stack.pop()
+
+        if (x, y) in visited or gen > max_generations:
+            continue
+        if x < 0 or x >= gen_width or y < 0 or y >= gen_height:
+            continue
+
+        visited.add((x, y))
+        voxels.append(Voxel(x, y, gen))
+
+        # L-system style branching
+        if random.random() < branch_probability:
+            # Forward
+            stack.append((x + voxel_size * int(math.cos(angle)),
+                         y + voxel_size * int(math.sin(angle)),
+                         gen + 1, angle))
+            # Branch left
+            stack.append((x + voxel_size * int(math.cos(angle - 0.5)),
+                         y + voxel_size * int(math.sin(angle - 0.5)),
+                         gen + 1, angle - 0.5))
+            # Branch right
+            stack.append((x + voxel_size * int(math.cos(angle + 0.5)),
+                         y + voxel_size * int(math.sin(angle + 0.5)),
+                         gen + 1, angle + 0.5))
+
+    # Draw voxels in blocky Minecraft style
+    for voxel in voxels:
+        # Color based on generation (age)
+        t = voxel.generation / max_generations
+        voxel_color = get_color_from_palette(t, palette)
+
+        # Add slight variation for each voxel
+        variation = random.uniform(0.9, 1.1)
+        voxel_color = tuple(int(min(255, c * variation)) for c in voxel_color)
+
+        # Draw blocky voxel
+        for dy in range(voxel_size):
+            for dx in range(voxel_size):
+                px = voxel.x + dx
+                py = voxel.y + dy
+
+                if 0 <= px < gen_width and 0 <= py < gen_height:
+                    # Add edge darkening for 3D block effect
+                    edge_darken = 1.0
+                    if dx == 0 or dy == 0:
+                        edge_darken = 0.7
+                    elif dx == voxel_size - 1 or dy == voxel_size - 1:
+                        edge_darken = 0.8
+
+                    color = tuple(int(c * edge_darken) for c in voxel_color)
+
+                    pixels[px, py] = color
+                    if mirror_h:
+                        pixels[width - 1 - px, py] = color
+                    if mirror_v:
+                        pixels[px, height - 1 - py] = color
+                    if mirror_h and mirror_v:
+                        pixels[width - 1 - px, height - 1 - py] = color
+
+    return img
+
+def generate_isometric_pixel(width, height, palette, mirror_h=True, mirror_v=True):
+    """Isometric pixel art patterns inspired by ProceduralPixelArt."""
+    img = Image.new('RGB', (width, height), PALETTE['background'])
+    pixels = img.load()
+
+    # Calculate generation region based on mirroring
+    gen_width = (width // 2) if mirror_h else width
+    gen_height = (height // 2) if mirror_v else height
+
+    # Isometric grid parameters (dimetric projection)
+    # In isometric view: x goes right-down, y goes left-down, z goes up
+    tile_width = 40
+    tile_height = 20
+
+    # Generate isometric grid of blocks
+    grid_size_x = gen_width // tile_width
+    grid_size_y = gen_height // tile_height
+
+    for grid_y in range(grid_size_y):
+        for grid_x in range(grid_size_x):
+            # Determine block height using noise
+            noise = perlin2D(grid_x * 0.2, grid_y * 0.2)
+            block_height = int((noise + 1) * 3)  # 0-6 blocks high
+
+            if block_height <= 0:
+                continue
+
+            # Calculate isometric screen position
+            iso_x = (grid_x - grid_y) * (tile_width // 2)
+            iso_y = (grid_x + grid_y) * (tile_height // 2)
+
+            # Center the grid
+            iso_x += gen_width // 2
+            iso_y += 100
+
+            # Color based on height
+            t = block_height / 6
+            block_color = get_color_from_palette(t, palette)
+            dark_color = tuple(int(c * 0.6) for c in block_color)
+            light_color = tuple(int(min(255, c * 1.2)) for c in block_color)
+
+            # Draw isometric block (simplified)
+            # Top face (lighter)
+            for ty in range(tile_height // 2):
+                for tx in range(tile_width):
+                    px = iso_x + tx - block_height * 2
+                    py = iso_y + ty - block_height * (tile_height // 2)
+
+                    if 0 <= px < gen_width and 0 <= py < gen_height:
+                        # Diamond shape for top face
+                        if abs(tx - tile_width // 2) + abs(ty - tile_height // 4) * 2 < tile_width // 2:
+                            pixels[px, py] = light_color
+                            if mirror_h:
+                                pixels[width - 1 - px, py] = light_color
+                            if mirror_v:
+                                pixels[px, height - 1 - py] = light_color
+                            if mirror_h and mirror_v:
+                                pixels[width - 1 - px, height - 1 - py] = light_color
+
+            # Left face (medium)
+            for h in range(block_height * (tile_height // 2)):
+                for tx in range(tile_width // 2):
+                    px = iso_x + tx - block_height * 2
+                    py = iso_y + tile_height // 2 + h
+
+                    if 0 <= px < gen_width and 0 <= py < gen_height:
+                        pixels[px, py] = block_color
+                        if mirror_h:
+                            pixels[width - 1 - px, py] = block_color
+                        if mirror_v:
+                            pixels[px, height - 1 - py] = block_color
+                        if mirror_h and mirror_v:
+                            pixels[width - 1 - px, height - 1 - py] = block_color
+
+            # Right face (darker)
+            for h in range(block_height * (tile_height // 2)):
+                for tx in range(tile_width // 2):
+                    px = iso_x + tile_width // 2 + tx - block_height * 2
+                    py = iso_y + tile_height // 2 + h
+
+                    if 0 <= px < gen_width and 0 <= py < gen_height:
+                        pixels[px, py] = dark_color
+                        if mirror_h:
+                            pixels[width - 1 - px, py] = dark_color
+                        if mirror_v:
+                            pixels[px, height - 1 - py] = dark_color
+                        if mirror_h and mirror_v:
+                            pixels[width - 1 - px, height - 1 - py] = dark_color
+
+    return img
+
+def generate_lowpoly_terrain(width, height, palette, mirror_h=True, mirror_v=True):
+    """Low-poly terrain with elevation-based coloring inspired by THREE.Terrain."""
+    img = Image.new('RGB', (width, height), PALETTE['background'])
+    draw = ImageDraw.Draw(img)
+
+    # Calculate generation region based on mirroring
+    gen_width = (width // 2) if mirror_h else width
+    gen_height = (height // 2) if mirror_v else height
+
+    # Generate terrain grid
+    grid_size = 30
+    cols = gen_width // grid_size
+    rows = gen_height // grid_size
+
+    # Create heightmap
+    heightmap = []
+    scale = 0.1
+
+    for row in range(rows + 1):
+        height_row = []
+        for col in range(cols + 1):
+            # Use Diamond-Square-like noise
+            elevation = combined(perlin2D, col * scale, row * scale, octaves=4, persistence=0.6)
+            # Add some Simplex for variation
+            elevation += simplex2D(col * scale * 2, row * scale * 2) * 0.3
+            height_row.append(elevation)
+        heightmap.append(height_row)
+
+    # Draw low-poly triangles
+    for row in range(rows):
+        for col in range(cols):
+            x = col * grid_size
+            y = row * grid_size
+
+            # Get corner elevations
+            h1 = heightmap[row][col]
+            h2 = heightmap[row][col + 1]
+            h3 = heightmap[row + 1][col]
+            h4 = heightmap[row + 1][col + 1]
+
+            # Average elevation for color
+            avg_elevation_1 = (h1 + h2 + h3) / 3
+            avg_elevation_2 = (h2 + h3 + h4) / 3
+
+            # Map to palette (elevation-based coloring)
+            t1 = (avg_elevation_1 + 1) / 2
+            t2 = (avg_elevation_2 + 1) / 2
+
+            color1 = get_color_from_palette(t1, palette)
+            color2 = get_color_from_palette(t2, palette)
+
+            # First triangle (top-left)
+            triangle1 = [(x, y), (x + grid_size, y), (x, y + grid_size)]
+            draw.polygon(triangle1, fill=color1, outline=PALETTE['background'])
+
+            if mirror_h:
+                tri1_m = [(width - 1 - px, py) for px, py in triangle1]
+                draw.polygon(tri1_m, fill=color1, outline=PALETTE['background'])
+            if mirror_v:
+                tri1_m = [(px, height - 1 - py) for px, py in triangle1]
+                draw.polygon(tri1_m, fill=color1, outline=PALETTE['background'])
+            if mirror_h and mirror_v:
+                tri1_m = [(width - 1 - px, height - 1 - py) for px, py in triangle1]
+                draw.polygon(tri1_m, fill=color1, outline=PALETTE['background'])
+
+            # Second triangle (bottom-right)
+            triangle2 = [(x + grid_size, y), (x + grid_size, y + grid_size), (x, y + grid_size)]
+            draw.polygon(triangle2, fill=color2, outline=PALETTE['background'])
+
+            if mirror_h:
+                tri2_m = [(width - 1 - px, py) for px, py in triangle2]
+                draw.polygon(tri2_m, fill=color2, outline=PALETTE['background'])
+            if mirror_v:
+                tri2_m = [(px, height - 1 - py) for px, py in triangle2]
+                draw.polygon(tri2_m, fill=color2, outline=PALETTE['background'])
+            if mirror_h and mirror_v:
+                tri2_m = [(width - 1 - px, height - 1 - py) for px, py in triangle2]
+                draw.polygon(tri2_m, fill=color2, outline=PALETTE['background'])
+
+    return img
+
+def generate_reaction_diffusion(width, height, palette, mirror_h=True, mirror_v=True):
+    """Reaction-diffusion system creating organic patterns inspired by Ready."""
+    img = Image.new('RGB', (width, height))
+    pixels = img.load()
+
+    # Calculate generation region based on mirroring
+    gen_width = (width // 2) if mirror_h else width
+    gen_height = (height // 2) if mirror_v else height
+
+    # Initialize concentration grids (Gray-Scott model)
+    # A and B are two chemical concentrations
+    grid_a = [[1.0 for _ in range(gen_width)] for _ in range(gen_height)]
+    grid_b = [[0.0 for _ in range(gen_width)] for _ in range(gen_height)]
+
+    # Seed some initial B concentration in random spots
+    for _ in range(20):
+        seed_x = random.randint(gen_width // 4, 3 * gen_width // 4)
+        seed_y = random.randint(gen_height // 4, 3 * gen_height // 4)
+        for dy in range(-5, 6):
+            for dx in range(-5, 6):
+                nx, ny = seed_x + dx, seed_y + dy
+                if 0 <= nx < gen_width and 0 <= ny < gen_height:
+                    grid_b[ny][nx] = 1.0
+
+    # Gray-Scott parameters for coral-like patterns
+    feed_rate = 0.055
+    kill_rate = 0.062
+    diffusion_a = 1.0
+    diffusion_b = 0.5
+    dt = 1.0
+
+    # Run simulation
+    iterations = 5000
+
+    for iteration in range(iterations):
+        new_a = [[0.0 for _ in range(gen_width)] for _ in range(gen_height)]
+        new_b = [[0.0 for _ in range(gen_width)] for _ in range(gen_height)]
+
+        for y in range(1, gen_height - 1):
+            for x in range(1, gen_width - 1):
+                a = grid_a[y][x]
+                b = grid_b[y][x]
+
+                # Laplacian (diffusion)
+                laplacian_a = (
+                    grid_a[y-1][x] + grid_a[y+1][x] +
+                    grid_a[y][x-1] + grid_a[y][x+1] -
+                    4 * a
+                )
+                laplacian_b = (
+                    grid_b[y-1][x] + grid_b[y+1][x] +
+                    grid_b[y][x-1] + grid_b[y][x+1] -
+                    4 * b
+                )
+
+                # Reaction
+                reaction = a * b * b
+
+                # Update
+                new_a[y][x] = a + (diffusion_a * laplacian_a - reaction + feed_rate * (1 - a)) * dt
+                new_b[y][x] = b + (diffusion_b * laplacian_b + reaction - (kill_rate + feed_rate) * b) * dt
+
+                # Clamp
+                new_a[y][x] = max(0, min(1, new_a[y][x]))
+                new_b[y][x] = max(0, min(1, new_b[y][x]))
+
+        grid_a = new_a
+        grid_b = new_b
+
+    # Render
+    for y in range(gen_height):
+        for x in range(gen_width):
+            # Map concentration B to color
+            t = grid_b[y][x]
+            color = get_color_from_palette(t, palette)
+
+            # Set pixel and apply mirroring
+            pixels[x, y] = color
+            if mirror_h:
+                pixels[width - 1 - x, y] = color
+            if mirror_v:
+                pixels[x, height - 1 - y] = color
+            if mirror_h and mirror_v:
+                pixels[width - 1 - x, height - 1 - y] = color
+
+    return img
+
+def generate_strange_attractor(width, height, palette, mirror_h=True, mirror_v=True):
+    """Chaotic dynamical systems creating strange attractors inspired by dysts."""
+    img = Image.new('RGB', (width, height), PALETTE['background'])
+    draw = ImageDraw.Draw(img, 'RGBA')
+
+    # Calculate generation region based on mirroring
+    gen_width = (width // 2) if mirror_h else width
+    gen_height = (height // 2) if mirror_v else height
+
+    # Choose attractor type randomly
+    attractor_type = random.choice(['lorenz', 'rossler', 'aizawa', 'halvorsen'])
+
+    # Initialize starting point
+    x, y, z = 0.1, 0.1, 0.1
+    dt = 0.01
+    iterations = 50000
+
+    # Store trajectory points
+    points_2d = []
+
+    for _ in range(iterations):
+        # Compute derivatives based on attractor type
+        if attractor_type == 'lorenz':
+            # Lorenz system
+            sigma, rho, beta = 10.0, 28.0, 8.0/3.0
+            dx = sigma * (y - x)
+            dy = x * (rho - z) - y
+            dz = x * y - beta * z
+        elif attractor_type == 'rossler':
+            # Rössler system
+            a, b, c = 0.2, 0.2, 5.7
+            dx = -y - z
+            dy = x + a * y
+            dz = b + z * (x - c)
+        elif attractor_type == 'aizawa':
+            # Aizawa attractor
+            a, b, c, d, e, f = 0.95, 0.7, 0.6, 3.5, 0.25, 0.1
+            dx = (z - b) * x - d * y
+            dy = d * x + (z - b) * y
+            dz = c + a * z - (z**3)/3 - (x**2 + y**2) * (1 + e * z) + f * z * x**3
+        else:  # halvorsen
+            # Halvorsen attractor
+            a = 1.4
+            dx = -a * x - 4 * y - 4 * z - y * y
+            dy = -a * y - 4 * z - 4 * x - z * z
+            dz = -a * z - 4 * x - 4 * y - x * x
+
+        # Update position
+        x += dx * dt
+        y += dy * dt
+        z += dz * dt
+
+        # Project 3D to 2D (isometric-ish)
+        screen_x = int(gen_width / 2 + x * 15 + y * 10)
+        screen_y = int(gen_height / 2 + z * 15 - y * 5)
+
+        if 0 <= screen_x < gen_width and 0 <= screen_y < gen_height:
+            points_2d.append((screen_x, screen_y))
+
+    # Draw the attractor with color gradient
+    for i in range(len(points_2d) - 1):
+        t = i / len(points_2d)
+        color = get_color_from_palette(t, palette)
+        alpha = 20
+
+        x1, y1 = points_2d[i]
+        x2, y2 = points_2d[i + 1]
+
+        draw.line([(x1, y1), (x2, y2)], fill=color + (alpha,), width=1)
+
+        # Mirror
+        if mirror_h:
+            draw.line([(width - 1 - x1, y1), (width - 1 - x2, y2)], fill=color + (alpha,), width=1)
+        if mirror_v:
+            draw.line([(x1, height - 1 - y1), (x2, height - 1 - y2)], fill=color + (alpha,), width=1)
+        if mirror_h and mirror_v:
+            draw.line([(width - 1 - x1, height - 1 - y1), (width - 1 - x2, height - 1 - y2)],
+                     fill=color + (alpha,), width=1)
+
+    return img
+
+def generate_dla(width, height, palette, mirror_h=True, mirror_v=True):
+    """Diffusion Limited Aggregation creating coral-like structures inspired by dla-gpu."""
+    img = Image.new('RGB', (width, height), PALETTE['background'])
+    pixels = img.load()
+
+    # Calculate generation region based on mirroring
+    gen_width = (width // 2) if mirror_h else width
+    gen_height = (height // 2) if mirror_v else height
+
+    # Grid to track stuck particles
+    stuck = [[False for _ in range(gen_width)] for _ in range(gen_height)]
+
+    # Seed center
+    center_x = gen_width // 2
+    center_y = gen_height // 2
+    stuck[center_y][center_x] = True
+
+    # Track when each particle stuck (for coloring)
+    stuck_time = [[0 for _ in range(gen_width)] for _ in range(gen_height)]
+    stuck_time[center_y][center_x] = 1
+
+    num_particles = 10000
+    current_time = 1
+
+    for particle_idx in range(num_particles):
+        # Start particle at random edge
+        edge = random.randint(0, 3)
+        if edge == 0:  # top
+            x, y = random.randint(0, gen_width - 1), 0
+        elif edge == 1:  # right
+            x, y = gen_width - 1, random.randint(0, gen_height - 1)
+        elif edge == 2:  # bottom
+            x, y = random.randint(0, gen_width - 1), gen_height - 1
+        else:  # left
+            x, y = 0, random.randint(0, gen_height - 1)
+
+        # Random walk until it touches a stuck particle
+        max_steps = 10000
+        for step in range(max_steps):
+            # Check neighbors for stuck particles
+            adjacent_stuck = False
+            for dy in [-1, 0, 1]:
+                for dx in [-1, 0, 1]:
+                    if dx == 0 and dy == 0:
+                        continue
+                    nx, ny = x + dx, y + dy
+                    if 0 <= nx < gen_width and 0 <= ny < gen_height:
+                        if stuck[ny][nx]:
+                            adjacent_stuck = True
+                            break
+                if adjacent_stuck:
+                    break
+
+            if adjacent_stuck:
+                # Stick here
+                stuck[y][x] = True
+                current_time += 1
+                stuck_time[y][x] = current_time
+                break
+
+            # Random walk
+            dx = random.choice([-1, 0, 1])
+            dy = random.choice([-1, 0, 1])
+            x = max(0, min(gen_width - 1, x + dx))
+            y = max(0, min(gen_height - 1, y + dy))
+
+    # Render with time-based coloring
+    max_time = current_time
+
+    for y in range(gen_height):
+        for x in range(gen_width):
+            if stuck[y][x]:
+                # Color based on when it stuck (creates growth rings effect)
+                t = stuck_time[y][x] / max_time
+                color = get_color_from_palette(t, palette)
+            else:
+                color = PALETTE['background']
+
+            # Set pixel and apply mirroring
+            pixels[x, y] = color
+            if mirror_h:
+                pixels[width - 1 - x, y] = color
+            if mirror_v:
+                pixels[x, height - 1 - y] = color
+            if mirror_h and mirror_v:
+                pixels[width - 1 - x, height - 1 - y] = color
+
+    return img
+
+def generate_neural_ca(width, height, palette, mirror_h=True, mirror_v=True):
+    """Neural cellular automata with self-organizing patterns inspired by Growing-Neural-Cellular-Automata."""
+    img = Image.new('RGB', (width, height))
+    pixels = img.load()
+
+    # Calculate generation region based on mirroring
+    gen_width = (width // 2) if mirror_h else width
+    gen_height = (height // 2) if mirror_v else height
+
+    # Initialize grid with multiple channels (simplified neural CA)
+    # Channels: 0=alive, 1-3=color info
+    grid = [[[0.0 for _ in range(4)] for _ in range(gen_width)] for _ in range(gen_height)]
+
+    # Seed center with initial pattern
+    center_x = gen_width // 2
+    center_y = gen_height // 2
+    seed_size = 20
+
+    for dy in range(-seed_size, seed_size):
+        for dx in range(-seed_size, seed_size):
+            if dx*dx + dy*dy < seed_size*seed_size:
+                x, y = center_x + dx, center_y + dy
+                if 0 <= x < gen_width and 0 <= y < gen_height:
+                    grid[y][x][0] = 1.0  # alive
+                    grid[y][x][1] = random.random()
+                    grid[y][x][2] = random.random()
+                    grid[y][x][3] = random.random()
+
+    # Simulate growth (simplified neural rules)
+    iterations = 100
+
+    for iteration in range(iterations):
+        new_grid = [[[0.0 for _ in range(4)] for _ in range(gen_width)] for _ in range(gen_height)]
+
+        for y in range(1, gen_height - 1):
+            for x in range(1, gen_width - 1):
+                # Count alive neighbors
+                alive_neighbors = 0
+                avg_color = [0, 0, 0]
+
+                for dy in [-1, 0, 1]:
+                    for dx in [-1, 0, 1]:
+                        if dx == 0 and dy == 0:
+                            continue
+                        ny, nx = y + dy, x + dx
+                        if grid[ny][nx][0] > 0.5:
+                            alive_neighbors += 1
+                            for c in range(3):
+                                avg_color[c] += grid[ny][nx][c + 1]
+
+                if alive_neighbors > 0:
+                    for c in range(3):
+                        avg_color[c] /= alive_neighbors
+
+                # Neural-like growth rule
+                current_alive = grid[y][x][0]
+
+                # Grow if 2-3 alive neighbors
+                if alive_neighbors >= 2 and alive_neighbors <= 3:
+                    new_grid[y][x][0] = min(1.0, current_alive + 0.1)
+                    # Inherit color with mutation
+                    for c in range(3):
+                        mutation = (perlin2D(x * 0.01 + iteration * 0.1, y * 0.01) + 1) / 2
+                        new_grid[y][x][c + 1] = avg_color[c] * 0.9 + mutation * 0.1
+                elif current_alive > 0.5:
+                    # Decay
+                    new_grid[y][x][0] = max(0.0, current_alive - 0.05)
+                    for c in range(3):
+                        new_grid[y][x][c + 1] = grid[y][x][c + 1]
+
+        grid = new_grid
+
+    # Render
+    for y in range(gen_height):
+        for x in range(gen_width):
+            if grid[y][x][0] > 0.1:
+                # Use the evolved color values
+                t = (grid[y][x][1] + grid[y][x][2] + grid[y][x][3]) / 3
+                color = get_color_from_palette(t, palette)
+
+                # Modulate by aliveness
+                brightness = grid[y][x][0]
+                color = tuple(int(c * brightness) for c in color)
+            else:
+                color = PALETTE['background']
+
+            # Set pixel and apply mirroring
+            pixels[x, y] = color
+            if mirror_h:
+                pixels[width - 1 - x, y] = color
+            if mirror_v:
+                pixels[x, height - 1 - y] = color
+            if mirror_h and mirror_v:
+                pixels[width - 1 - x, height - 1 - y] = color
+
+    return img
+
+def generate_space_colonization(width, height, palette, mirror_h=True, mirror_v=True):
+    """Space colonization algorithm creating venation patterns inspired by morphogenesis-resources."""
+    img = Image.new('RGB', (width, height), PALETTE['background'])
+    draw = ImageDraw.Draw(img, 'RGBA')
+
+    # Calculate generation region based on mirroring
+    gen_width = (width // 2) if mirror_h else width
+    gen_height = (height // 2) if mirror_v else height
+
+    # Attraction points (where the tree wants to grow)
+    num_attractors = 500
+    attractors = []
+    for _ in range(num_attractors):
+        # Cluster attractors in interesting regions
+        cluster_x = random.randint(gen_width // 4, 3 * gen_width // 4)
+        cluster_y = random.randint(gen_height // 4, 3 * gen_height // 4)
+        x = cluster_x + random.randint(-100, 100)
+        y = cluster_y + random.randint(-100, 100)
+        if 0 <= x < gen_width and 0 <= y < gen_height:
+            attractors.append([x, y, True])  # x, y, active
+
+    # Tree nodes
+    class Node:
+        def __init__(self, x, y, parent=None):
+            self.x = x
+            self.y = y
+            self.parent = parent
+            self.children = []
+
+    # Start from bottom center
+    root = Node(gen_width // 2, gen_height - 100)
+    nodes = [root]
+
+    # Parameters
+    influence_distance = 150
+    kill_distance = 10
+    segment_length = 5
+    max_iterations = 100
+
+    for iteration in range(max_iterations):
+        # For each node, find influencing attractors
+        influences = {}
+
+        for attractor in attractors:
+            if not attractor[2]:  # not active
+                continue
+
+            ax, ay = attractor[0], attractor[1]
+            closest_node = None
+            closest_dist = float('inf')
+
+            for node in nodes:
+                dx = ax - node.x
+                dy = ay - node.y
+                dist = math.sqrt(dx*dx + dy*dy)
+
+                if dist < kill_distance:
+                    attractor[2] = False  # deactivate
+                    break
+
+                if dist < influence_distance and dist < closest_dist:
+                    closest_dist = dist
+                    closest_node = node
+
+            if closest_node and attractor[2]:
+                if closest_node not in influences:
+                    influences[closest_node] = []
+                influences[closest_node].append((ax, ay))
+
+        if not influences:
+            break
+
+        # Grow new nodes
+        new_nodes = []
+        for node, attractors_list in influences.items():
+            # Average direction to attractors
+            avg_dx = 0
+            avg_dy = 0
+            for ax, ay in attractors_list:
+                dx = ax - node.x
+                dy = ay - node.y
+                dist = math.sqrt(dx*dx + dy*dy)
+                if dist > 0:
+                    avg_dx += dx / dist
+                    avg_dy += dy / dist
+
+            if len(attractors_list) > 0:
+                avg_dx /= len(attractors_list)
+                avg_dy /= len(attractors_list)
+
+                # Normalize and scale
+                mag = math.sqrt(avg_dx*avg_dx + avg_dy*avg_dy)
+                if mag > 0:
+                    avg_dx = (avg_dx / mag) * segment_length
+                    avg_dy = (avg_dy / mag) * segment_length
+
+                    new_x = node.x + avg_dx
+                    new_y = node.y + avg_dy
+
+                    if 0 <= new_x < gen_width and 0 <= new_y < gen_height:
+                        new_node = Node(new_x, new_y, node)
+                        node.children.append(new_node)
+                        new_nodes.append(new_node)
+
+        nodes.extend(new_nodes)
+
+    # Draw the tree structure
+    def draw_node(node, depth=0):
+        if node.parent:
+            t = depth / 50  # color based on depth
+            color = get_color_from_palette(t % 1.0, palette)
+            alpha = 150
+
+            x1, y1 = int(node.parent.x), int(node.parent.y)
+            x2, y2 = int(node.x), int(node.y)
+
+            draw.line([(x1, y1), (x2, y2)], fill=color + (alpha,), width=2)
+
+            # Mirror
+            if mirror_h:
+                draw.line([(width - 1 - x1, y1), (width - 1 - x2, y2)], fill=color + (alpha,), width=2)
+            if mirror_v:
+                draw.line([(x1, height - 1 - y1), (x2, height - 1 - y2)], fill=color + (alpha,), width=2)
+            if mirror_h and mirror_v:
+                draw.line([(width - 1 - x1, height - 1 - y1), (width - 1 - x2, height - 1 - y2)],
+                         fill=color + (alpha,), width=2)
+
+        for child in node.children:
+            draw_node(child, depth + 1)
+
+    draw_node(root)
+
+    return img
+
+def generate_isometric_voxel_art(width, height, palette, mirror_h=True, mirror_v=True):
+    """Isometric voxel rendering with multiple angles inspired by IsoVoxel."""
+    img = Image.new('RGB', (width, height), PALETTE['background'])
+    pixels = img.load()
+
+    # Calculate generation region based on mirroring
+    gen_width = (width // 2) if mirror_h else width
+    gen_height = (height // 2) if mirror_v else height
+
+    # Define voxel grid (3D)
+    grid_size = 20
+    voxel_grid = {}
+
+    # Procedurally generate voxels
+    for z in range(grid_size):
+        for y in range(grid_size):
+            for x in range(grid_size):
+                # Use 3D noise to determine if voxel exists
+                noise_val = perlin2D(x * 0.2, y * 0.2) + simplex2D(z * 0.2, (x + y) * 0.1)
+                if noise_val > 0.3:
+                    voxel_grid[(x, y, z)] = True
+
+    # Isometric projection parameters
+    # Standard isometric angle: 30 degrees
+    iso_scale = 10
+
+    def iso_project(x, y, z):
+        """Project 3D coordinates to 2D isometric view."""
+        screen_x = (x - y) * iso_scale
+        screen_y = (x + y) * iso_scale * 0.5 - z * iso_scale
+        return screen_x, screen_y
+
+    # Center offset
+    center_x = gen_width // 2
+    center_y = gen_height // 2
+
+    # Draw voxels in back-to-front order for proper occlusion
+    # Sort by distance from camera
+    sorted_coords = sorted(voxel_grid.keys(), key=lambda coord: coord[0] + coord[1] - coord[2])
+
+    for (vx, vy, vz) in sorted_coords:
+        sx, sy = iso_project(vx, vy, vz)
+        sx += center_x
+        sy += center_y
+
+        # Determine color based on height
+        t = vz / grid_size
+        voxel_color = get_color_from_palette(t, palette)
+
+        # Draw the isometric cube faces (top, left, right)
+        # Top face
+        top_points = [
+            (sx, sy),
+            (sx + iso_scale, sy + iso_scale * 0.5),
+            (sx, sy + iso_scale),
+            (sx - iso_scale, sy + iso_scale * 0.5)
+        ]
+
+        # Light color for top
+        light_color = tuple(int(min(255, c * 1.2)) for c in voxel_color)
+
+        for point in top_points:
+            px, py = int(point[0]), int(point[1])
+            # Fill with simple scan
+            for dy in range(-iso_scale, iso_scale):
+                for dx in range(-iso_scale, iso_scale):
+                    test_x, test_y = px + dx, py + dy
+                    if 0 <= test_x < gen_width and 0 <= test_y < gen_height:
+                        # Check if inside diamond
+                        if abs(dx) + abs(dy * 2) < iso_scale:
+                            pixels[test_x, test_y] = light_color
+                            if mirror_h:
+                                pixels[width - 1 - test_x, test_y] = light_color
+                            if mirror_v:
+                                pixels[test_x, height - 1 - test_y] = light_color
+                            if mirror_h and mirror_v:
+                                pixels[width - 1 - test_x, height - 1 - test_y] = light_color
+
+    return img
+
+def generate_svg_isometric(width, height, palette, mirror_h=True, mirror_v=True):
+    """SVG-style isometric voxel art inspired by isovoxel library."""
+    img = Image.new('RGB', (width, height), PALETTE['background'])
+    draw = ImageDraw.Draw(img, 'RGBA')
+
+    # Calculate generation region based on mirroring
+    gen_width = (width // 2) if mirror_h else width
+    gen_height = (height // 2) if mirror_v else height
+
+    # Create equilateral triangle grid pattern
+    tri_size = 30
+    cols = gen_width // tri_size
+    rows = gen_height // int(tri_size * 0.866)  # Height of equilateral triangle
+
+    for row in range(rows):
+        for col in range(cols):
+            # Determine if this triangle should be filled
+            noise = perlin2D(col * 0.3, row * 0.3)
+            if noise > 0:
+                # Calculate triangle vertices
+                offset_x = (tri_size // 2) if (row % 2 == 1) else 0
+                x = col * tri_size + offset_x
+                y = row * int(tri_size * 0.866)
+
+                # Pointing up or down based on position
+                pointing_up = (col + row) % 2 == 0
+
+                if pointing_up:
+                    vertices = [
+                        (x, y + int(tri_size * 0.866)),
+                        (x + tri_size // 2, y),
+                        (x + tri_size, y + int(tri_size * 0.866))
+                    ]
+                else:
+                    vertices = [
+                        (x, y),
+                        (x + tri_size, y),
+                        (x + tri_size // 2, y + int(tri_size * 0.866))
+                    ]
+
+                # Color based on position
+                t = (noise + 1) / 2
+                color = get_color_from_palette(t, palette)
+                alpha = 200
+
+                draw.polygon(vertices, fill=color + (alpha,), outline=PALETTE['cursor'])
+
+                # Mirror
+                if mirror_h or mirror_v:
+                    mirrored_verts = []
+                    for vx, vy in vertices:
+                        mx = (width - 1 - vx) if mirror_h else vx
+                        my = (height - 1 - vy) if mirror_v else vy
+                        mirrored_verts.append((mx, my))
+                    draw.polygon(mirrored_verts, fill=color + (alpha,), outline=PALETTE['cursor'])
+
+    return img
+
+def generate_voxel_world(width, height, palette, mirror_h=True, mirror_v=True):
+    """2.5D isometric world with Perlin noise terrain inspired by IsoEngine."""
+    img = Image.new('RGB', (width, height), PALETTE['background'])
+    pixels = img.load()
+
+    # Calculate generation region based on mirroring
+    gen_width = (width // 2) if mirror_h else width
+    gen_height = (height // 2) if mirror_v else height
+
+    # Generate heightmap using Perlin noise
+    world_size = 40
+    heightmap = {}
+
+    for wx in range(world_size):
+        for wy in range(world_size):
+            height_val = combined(perlin2D, wx * 0.1, wy * 0.1, octaves=3, persistence=0.5)
+            # Normalize to 0-10 blocks high
+            block_height = int((height_val + 1) * 5)
+            heightmap[(wx, wy)] = max(0, block_height)
+
+    # Isometric tile size
+    tile_w = 16
+    tile_h = 8
+
+    def world_to_screen(wx, wy, wz=0):
+        """Convert world coordinates to screen isometric coordinates."""
+        screen_x = (wx - wy) * (tile_w // 2)
+        screen_y = (wx + wy) * (tile_h // 2) - wz * tile_h
+        return screen_x, screen_y
+
+    # Center offset
+    center_x = gen_width // 2
+    center_y = gen_height // 2 + 200
+
+    # Draw tiles back to front
+    for wy in range(world_size - 1, -1, -1):
+        for wx in range(world_size):
+            height = heightmap.get((wx, wy), 0)
+
+            # Draw stack of blocks from 0 to height
+            for wz in range(height + 1):
+                sx, sy = world_to_screen(wx, wy, wz)
+                sx += center_x
+                sy += center_y
+
+                if not (0 <= sx < gen_width and 0 <= sy < gen_height):
+                    continue
+
+                # Color based on height
+                t = wz / 10
+                block_color = get_color_from_palette(t, palette)
+
+                # Draw isometric tile (diamond shape)
+                # Top face
+                for dy in range(-tile_h // 2, tile_h // 2):
+                    for dx in range(-tile_w // 2, tile_w // 2):
+                        px = int(sx + dx)
+                        py = int(sy + dy)
+
+                        # Diamond shape check
+                        if abs(dx) * tile_h + abs(dy) * tile_w < tile_w * tile_h // 2:
+                            if 0 <= px < gen_width and 0 <= py < gen_height:
+                                pixels[px, py] = block_color
+                                if mirror_h:
+                                    pixels[width - 1 - px, py] = block_color
+                                if mirror_v:
+                                    pixels[px, height - 1 - py] = block_color
+                                if mirror_h and mirror_v:
+                                    pixels[width - 1 - px, height - 1 - py] = block_color
+
+    return img
+
+def generate_multiangle_voxels(width, height, palette, mirror_h=True, mirror_v=True):
+    """Multi-angle voxel rendering with sloped edges inspired by spotvox."""
+    img = Image.new('RGB', (width, height), PALETTE['background'])
+    draw = ImageDraw.Draw(img, 'RGBA')
+
+    # Calculate generation region based on mirroring
+    gen_width = (width // 2) if mirror_h else width
+    gen_height = (height // 2) if mirror_v else height
+
+    # Create procedural voxel structure
+    structure_size = 15
+
+    # Build a random voxel structure
+    voxels = []
+    for x in range(structure_size):
+        for y in range(structure_size):
+            for z in range(structure_size):
+                # Create interesting shape using multiple noise functions
+                noise1 = perlin2D(x * 0.2, y * 0.2)
+                noise2 = simplex2D(y * 0.2, z * 0.2)
+                combined_noise = (noise1 + noise2) / 2
+
+                # Create hollow shell effect
+                dist_from_center = math.sqrt((x - structure_size/2)**2 +
+                                            (y - structure_size/2)**2 +
+                                            (z - structure_size/2)**2)
+                if 3 < dist_from_center < 7 and combined_noise > 0.2:
+                    voxels.append((x, y, z))
+
+    # Isometric projection with rotation
+    angle = math.pi / 6  # 30 degrees
+    scale = 15
+
+    def project_voxel(vx, vy, vz):
+        """Project voxel with rotation."""
+        # Rotate around Y axis
+        rotated_x = vx * math.cos(angle) - vz * math.sin(angle)
+        rotated_z = vx * math.sin(angle) + vz * math.cos(angle)
+
+        # Isometric projection
+        screen_x = (rotated_x - vy) * scale * 0.866
+        screen_y = (rotated_x + vy) * scale * 0.5 - rotated_z * scale
+        return screen_x, screen_y
+
+    center_x = gen_width // 2
+    center_y = gen_height // 2
+
+    # Sort for painter's algorithm
+    sorted_voxels = sorted(voxels, key=lambda v: v[0] + v[1] - v[2])
+
+    for vx, vy, vz in sorted_voxels:
+        sx, sy = project_voxel(vx, vy, vz)
+        sx += center_x
+        sy += center_y
+
+        # Color with emissive-like effect based on position
+        t = (vx + vy + vz) / (structure_size * 3)
+        base_color = get_color_from_palette(t, palette)
+
+        # Add glow effect
+        glow_radius = 20
+        for dy in range(-glow_radius, glow_radius):
+            for dx in range(-glow_radius, glow_radius):
+                px = int(sx + dx)
+                py = int(sy + dy)
+
+                dist = math.sqrt(dx*dx + dy*dy)
+                if dist < glow_radius and 0 <= px < gen_width and 0 <= py < gen_height:
+                    # Glow falloff
+                    intensity = 1 - (dist / glow_radius)
+                    intensity = max(0, intensity) ** 2
+                    alpha = int(intensity * 100)
+
+                    if alpha > 0:
+                        color_with_alpha = base_color + (alpha,)
+                        # Draw pixel
+                        draw.point((px, py), fill=color_with_alpha)
+
+                        # Mirror
+                        if mirror_h:
+                            draw.point((width - 1 - px, py), fill=color_with_alpha)
+                        if mirror_v:
+                            draw.point((px, height - 1 - py), fill=color_with_alpha)
+                        if mirror_h and mirror_v:
+                            draw.point((width - 1 - px, height - 1 - py), fill=color_with_alpha)
+
+    return img
+
+def generate_procedural_voxel_mesh(width, height, palette, mirror_h=True, mirror_v=True):
+    """Procedural voxel mesh generation inspired by voxgen L-systems."""
+    img = Image.new('RGB', (width, height), PALETTE['background'])
+    draw = ImageDraw.Draw(img, 'RGBA')
+
+    # Calculate generation region based on mirroring
+    gen_width = (width // 2) if mirror_h else width
+    gen_height = (height // 2) if mirror_v else height
+
+    # Generate fractal voxel structure using L-system-like rules
+    # Simple axiom: F (forward)
+    # Rules: F -> F[+F][-F]F
+    axiom = "F"
+    rules = {"F": "F[+F][-F]F"}
+    iterations = 3
+
+    # Apply L-system
+    current = axiom
+    for _ in range(iterations):
+        next_gen = ""
+        for char in current:
+            next_gen += rules.get(char, char)
+        current = next_gen
+
+    # Turtle graphics in 3D
+    voxels = set()
+    position = [0, 0, 0]
+    angle = [0, 0, 0]  # pitch, yaw, roll
+    stack = []
+    step_size = 2
+
+    for char in current:
+        if char == 'F':
+            # Move forward in current direction
+            direction = [
+                math.cos(angle[1]) * math.cos(angle[0]),
+                math.sin(angle[0]),
+                math.sin(angle[1]) * math.cos(angle[0])
+            ]
+            position[0] += direction[0] * step_size
+            position[1] += direction[1] * step_size
+            position[2] += direction[2] * step_size
+
+            voxels.add((int(position[0]), int(position[1]), int(position[2])))
+        elif char == '+':
+            angle[0] += math.pi / 6  # 30 degrees
+        elif char == '-':
+            angle[0] -= math.pi / 6
+        elif char == '[':
+            stack.append((position[:], angle[:]))
+        elif char == ']':
+            if stack:
+                position, angle = stack.pop()
+
+    # Render voxels isometrically
+    scale = 8
+
+    def iso_project(x, y, z):
+        screen_x = (x - y) * scale
+        screen_y = (x + y) * scale * 0.5 - z * scale
+        return screen_x, screen_y
+
+    center_x = gen_width // 2
+    center_y = gen_height // 2
+
+    # Sort voxels for rendering order
+    sorted_voxels = sorted(voxels, key=lambda v: v[0] + v[1] - v[2])
+
+    for vx, vy, vz in sorted_voxels:
+        sx, sy = iso_project(vx, vy, vz)
+        sx += center_x
+        sy += center_y
+
+        # Color based on branch depth (approximate)
+        t = (vz + 20) / 40  # Normalize around expected range
+        t = max(0, min(1, t))
+        voxel_color = get_color_from_palette(t, palette)
+
+        # Draw simple cube representation
+        cube_size = scale
+        cube_points = [
+            (sx, sy),
+            (sx + cube_size, sy + cube_size // 2),
+            (sx, sy + cube_size),
+            (sx - cube_size, sy + cube_size // 2)
+        ]
+
+        alpha = 180
+        draw.polygon(cube_points, fill=voxel_color + (alpha,), outline=PALETTE['cursor'])
+
+        # Mirror
+        if mirror_h or mirror_v:
+            mirrored_points = []
+            for px, py in cube_points:
+                mx = (width - 1 - px) if mirror_h else px
+                my = (height - 1 - py) if mirror_v else py
+                mirrored_points.append((mx, my))
+            draw.polygon(mirrored_points, fill=voxel_color + (alpha,), outline=PALETTE['cursor'])
+
+    return img
+
 # ============================================================================
 # MAIN GENERATION
 # ============================================================================
@@ -1061,6 +2333,21 @@ GENERATORS = {
     'pixel_dithering': ('Pixel Art Dithering', generate_pixel_art_dithering),
     'sprite_characters': ('Sprite Characters', generate_sprite_characters),
     'template_pixels': ('Template Pixel Art', generate_template_pixel_art),
+    'raytraced_sdf': ('Raytraced SDF', generate_raytraced_sdf),
+    'pathtraced_terrain': ('Path-Traced Terrain', generate_pathtraced_terrain),
+    'voxel_structures': ('Voxel L-Systems', generate_voxel_structures),
+    'isometric_pixel': ('Isometric Pixel Art', generate_isometric_pixel),
+    'lowpoly_terrain': ('Low-Poly Terrain', generate_lowpoly_terrain),
+    'reaction_diffusion': ('Reaction-Diffusion', generate_reaction_diffusion),
+    'strange_attractor': ('Strange Attractors', generate_strange_attractor),
+    'dla': ('DLA Aggregation', generate_dla),
+    'neural_ca': ('Neural Cellular Automata', generate_neural_ca),
+    'space_colonization': ('Space Colonization', generate_space_colonization),
+    'isometric_voxel_art': ('Isometric Voxel Art', generate_isometric_voxel_art),
+    'svg_isometric': ('SVG Isometric', generate_svg_isometric),
+    'voxel_world': ('Voxel World Engine', generate_voxel_world),
+    'multiangle_voxels': ('Multi-Angle Voxels', generate_multiangle_voxels),
+    'procedural_voxel_mesh': ('Procedural Voxel Mesh', generate_procedural_voxel_mesh),
 }
 
 def add_logo(img, logo_path):

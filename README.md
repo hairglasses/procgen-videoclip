@@ -4,7 +4,7 @@ Generate beautiful, unique macOS wallpapers using procedural generation techniqu
 
 ## Features
 
-- **16 Distinct Generation Techniques**:
+- **31 Distinct Generation Techniques**:
   - Layered Noise (Perlin/Simplex blend)
   - Voronoi Cells (organic cellular patterns)
   - Flow Field (particle-like flowing patterns)
@@ -21,6 +21,21 @@ Generate beautiful, unique macOS wallpapers using procedural generation techniqu
   - Pixel Art Dithering (authentic 8-bit style - [pyxelate](https://github.com/sedthh/pyxelate))
   - Sprite Characters (procedural robot sprites - [Sprite-Generator](https://github.com/MaartenGr/Sprite-Generator))
   - Template Pixel Art (rule-based pixel patterns - [Procedural-Pixel-Art-Generator](https://github.com/Darkhax-Forked/Procedural-Pixel-Art-Generator))
+  - Raytraced SDF (signed distance field geometry with CSG operations - [retrace.gl](https://github.com/stasilo/retrace.gl))
+  - Path-Traced Terrain (photorealistic terrain with retro 80s aesthetics - [THREE.js-PathTracing-Renderer](https://github.com/erichlof/THREE.js-PathTracing-Renderer))
+  - Voxel L-Systems (blocky organic structures using turtle graphics - [voxgen](https://github.com/wodend/voxgen))
+  - Isometric Pixel Art (dimetric projection with pixel-perfect rendering - [ProceduralPixelArt](https://github.com/jlcarr/ProceduralPixelArt))
+  - Low-Poly Terrain (elevation-based landscapes with triangulated mesh - [THREE.Terrain](https://github.com/IceCreamYou/THREE.Terrain))
+  - Reaction-Diffusion (Gray-Scott model creating organic biological patterns - [Ready](https://github.com/GollyGang/ready))
+  - Strange Attractors (chaotic dynamical systems like Lorenz and Rössler - [dysts](https://github.com/GilpinLab/dysts))
+  - DLA Aggregation (diffusion limited aggregation forming coral structures - [dla-gpu](https://github.com/zentralwerkstatt/dla-gpu))
+  - Neural Cellular Automata (self-organizing patterns that grow and heal - [Growing-Neural-Cellular-Automata](https://github.com/PWhiddy/Growing-Neural-Cellular-Automata-Pytorch))
+  - Space Colonization (venation patterns and leaf-vein structures - [morphogenesis-resources](https://github.com/jasonwebb/morphogenesis-resources))
+  - Isometric Voxel Art (multi-angle isometric voxel rendering - [IsoVoxel](https://github.com/tommyettinger/IsoVoxel))
+  - SVG Isometric (triangle grid-based isometric generative art - [isovoxel](https://github.com/rsimmons/isovoxel))
+  - Voxel World Engine (2.5D isometric terrain generation - [IsoEngine](https://github.com/7hebel/IsoEngine))
+  - Multi-Angle Voxels (voxel rendering with emissive glow effects - [spotvox](https://github.com/tommyettinger/spotvox))
+  - Procedural Voxel Mesh (L-system fractal voxel generation - [voxgen](https://github.com/wodend/voxgen))
 
 - **Horizontal + Vertical Symmetry**: All wallpapers default to beautiful symmetric patterns
 - **Custom Color Palette**: All wallpapers use your dark red/brown color scheme
@@ -35,7 +50,7 @@ Generate beautiful, unique macOS wallpapers using procedural generation techniqu
 Create a Photos album that grows as your personal procgen art gallery:
 
 ```bash
-# Add 16 new wallpapers to your Photos album (one from each technique)
+# Add 31 new wallpapers to your Photos album (one from each technique)
 ./generate_to_photos_album.py
 ```
 
@@ -50,14 +65,14 @@ Then set up the wallpaper slideshow:
 ./setup_auto_generate.sh
 ```
 
-This adds 16 new wallpapers to your album every day at 9 AM. Your collection keeps growing!
+This adds 31 new wallpapers to your album every day at 9 AM. Your collection keeps growing!
 
 ### Method 2: Local Directory
 
 Generate wallpapers to a local directory:
 
 ```bash
-# Generate 16 wallpapers (one from each technique) with h+v symmetry (default)
+# Generate 31 wallpapers (one from each technique) with h+v symmetry (default)
 python3 generate_wallpapers_multi.py
 
 # Generate single wallpaper with symmetry
@@ -81,7 +96,7 @@ python3 generate_wallpapers_multi.py
 
 **Main Scripts:**
 - `generate_to_photos_album.py` - Generate and add to Photos album (recommended)
-- `generate_wallpapers_multi.py` - Generate batch of 16 wallpapers to directory (one from each technique)
+- `generate_wallpapers_multi.py` - Generate batch of 31 wallpapers to directory (one from each technique)
 - `generate_wallpaper.py` - Generate single wallpaper to directory
 
 **Setup Scripts:**
@@ -196,7 +211,7 @@ If the automated setup fails:
 
 ## How It Works
 
-1. **Generation**: Each wallpaper uses one of 6 procedural techniques with random seeds
+1. **Generation**: Each wallpaper uses one of 31 procedural techniques with random seeds
 2. **Symmetry**: Patterns are mirrored horizontally and vertically for aesthetic balance
 3. **Photos Import**: Images are imported to Photos and added to "Procgen Wallpapers" album
 4. **Slideshow**: macOS cycles through the Photos album, changing wallpaper periodically
