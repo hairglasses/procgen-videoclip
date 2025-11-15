@@ -4,7 +4,7 @@ Generate beautiful, unique macOS wallpapers using procedural generation techniqu
 
 ## Features
 
-- **31 Distinct Generation Techniques**:
+- **37 Distinct Generation Techniques**:
   - Layered Noise (Perlin/Simplex blend)
   - Voronoi Cells (organic cellular patterns)
   - Flow Field (particle-like flowing patterns)
@@ -36,6 +36,12 @@ Generate beautiful, unique macOS wallpapers using procedural generation techniqu
   - Voxel World Engine (2.5D isometric terrain generation - [IsoEngine](https://github.com/7hebel/IsoEngine))
   - Multi-Angle Voxels (voxel rendering with emissive glow effects - [spotvox](https://github.com/tommyettinger/spotvox))
   - Procedural Voxel Mesh (L-system fractal voxel generation - [voxgen](https://github.com/wodend/voxgen))
+  - Seamless Texture Tiling (alpha-gradient blending for infinite tiling - [img2texture](https://github.com/rtmigo/img2texture))
+  - Example-Based Synthesis (multi-example texture synthesis - [texture-synthesis](https://github.com/EmbarkStudios/texture-synthesis))
+  - Hyperbolic Tiling (Escher-like Poincaré disk tesselations - [Escher](https://github.com/b5strbal/Escher))
+  - Wang Tiles (aperiodic coded-edge tiling patterns - [WangTile](https://github.com/sashaouellet/WangTile))
+  - Graph-Cut Synthesis (patch quilting with seam minimization - [TileableTextureSynthesis](https://github.com/lzqsd/TileableTextureSynthesis))
+  - Gaussian Tiling (Gaussian-masked seamless overlapping - [TileMaker](https://github.com/mdushkoff/TileMaker))
 
 - **Horizontal + Vertical Symmetry**: All wallpapers default to beautiful symmetric patterns
 - **Custom Color Palette**: All wallpapers use your dark red/brown color scheme
@@ -50,7 +56,7 @@ Generate beautiful, unique macOS wallpapers using procedural generation techniqu
 Create a Photos album that grows as your personal procgen art gallery:
 
 ```bash
-# Add 31 new wallpapers to your Photos album (one from each technique)
+# Add 37 new wallpapers to your Photos album (one from each technique)
 ./generate_to_photos_album.py
 ```
 
@@ -65,14 +71,14 @@ Then set up the wallpaper slideshow:
 ./setup_auto_generate.sh
 ```
 
-This adds 31 new wallpapers to your album every day at 9 AM. Your collection keeps growing!
+This adds 37 new wallpapers to your album every day at 9 AM. Your collection keeps growing!
 
 ### Method 2: Local Directory
 
 Generate wallpapers to a local directory:
 
 ```bash
-# Generate 31 wallpapers (one from each technique) with h+v symmetry (default)
+# Generate 37 wallpapers (one from each technique) with h+v symmetry (default)
 python3 generate_wallpapers_multi.py
 
 # Generate single wallpaper with symmetry
@@ -96,7 +102,7 @@ python3 generate_wallpapers_multi.py
 
 **Main Scripts:**
 - `generate_to_photos_album.py` - Generate and add to Photos album (recommended)
-- `generate_wallpapers_multi.py` - Generate batch of 31 wallpapers to directory (one from each technique)
+- `generate_wallpapers_multi.py` - Generate batch of 37 wallpapers to directory (one from each technique)
 - `generate_wallpaper.py` - Generate single wallpaper to directory
 
 **Setup Scripts:**
@@ -211,7 +217,7 @@ If the automated setup fails:
 
 ## How It Works
 
-1. **Generation**: Each wallpaper uses one of 31 procedural techniques with random seeds
+1. **Generation**: Each wallpaper uses one of 37 procedural techniques with random seeds
 2. **Symmetry**: Patterns are mirrored horizontally and vertically for aesthetic balance
 3. **Photos Import**: Images are imported to Photos and added to "Procgen Wallpapers" album
 4. **Slideshow**: macOS cycles through the Photos album, changing wallpaper periodically

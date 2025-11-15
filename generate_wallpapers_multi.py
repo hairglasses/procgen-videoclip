@@ -2312,6 +2312,445 @@ def generate_procedural_voxel_mesh(width, height, palette, mirror_h=True, mirror
 
     return img
 
+def generate_seamless_texture(width, height, palette, mirror_h=True, mirror_v=True):
+    """Seamless tileable texture using alpha-gradient blending inspired by img2texture."""
+    img = Image.new('RGB', (width, height))
+    pixels = img.load()
+
+    # Calculate generation region based on mirroring
+    gen_width = (width // 2) if mirror_h else width
+    gen_height = (height // 2) if mirror_v else height
+
+    # Generate base texture pattern
+    tile_size = 256
+    overlap = 0.15  # 15% overlap for blending
+
+    # Create base texture with noise
+    base_texture = {}
+    for y in range(tile_size):
+        for x in range(tile_size):
+            noise = combined(perlin2D, x * 0.02, y * 0.02, octaves=4, persistence=0.6)
+            t = (noise + 1) / 2
+            base_texture[(x, y)] = get_color_from_palette(t, palette)
+
+    # Tile with alpha blending at edges
+    for ty in range(0, gen_height, tile_size):
+        for tx in range(0, gen_width, tile_size):
+            for py in range(tile_size):
+                for px in range(tile_size):
+                    dest_x = tx + px
+                    dest_y = ty + py
+
+                    if dest_x >= gen_width or dest_y >= gen_height:
+                        continue
+
+                    # Calculate blend factors for seamless tiling
+                    blend_x = 1.0
+                    blend_y = 1.0
+
+                    overlap_pixels = int(tile_size * overlap)
+                    if px < overlap_pixels:
+                        blend_x = px / overlap_pixels
+                    elif px > tile_size - overlap_pixels:
+                        blend_x = (tile_size - px) / overlap_pixels
+
+                    if py < overlap_pixels:
+                        blend_y = py / overlap_pixels
+                    elif py > tile_size - overlap_pixels:
+                        blend_y = (tile_size - py) / overlap_pixels
+
+                    blend_factor = blend_x * blend_y
+                    current_color = base_texture[(px, py)]
+
+                    # Blend with neighbors for seamless effect
+                    if blend_factor < 1.0:
+                        neighbor_x = (px + tile_size // 2) % tile_size
+                        neighbor_y = (py + tile_size // 2) % tile_size
+                        neighbor_color = base_texture[(neighbor_x, neighbor_y)]
+                        current_color = lerp_color(neighbor_color, current_color, blend_factor)
+
+                    pixels[dest_x, dest_y] = current_color
+                    if mirror_h:
+                        pixels[width - 1 - dest_x, dest_y] = current_color
+                    if mirror_v:
+                        pixels[dest_x, height - 1 - dest_y] = current_color
+                    if mirror_h and mirror_v:
+                        pixels[width - 1 - dest_x, height - 1 - dest_y] = current_color
+
+    return img
+
+def generate_example_synthesis(width, height, palette, mirror_h=True, mirror_v=True):
+    """Example-based texture synthesis inspired by texture-synthesis."""
+    img = Image.new('RGB', (width, height))
+    pixels = img.load()
+
+    # Calculate generation region based on mirroring
+    gen_width = (width // 2) if mirror_h else width
+    gen_height = (height // 2) if mirror_v else height
+
+    # Create example patch
+    patch_size = 64
+    example_patches = []
+
+    # Generate 4 example patches with different patterns
+    for p in range(4):
+        patch = {}
+        offset = p * 100
+        for py in range(patch_size):
+            for px in range(patch_size):
+                noise = combined(perlin2D, (px + offset) * 0.05, (py + offset) * 0.05, octaves=3)
+                # Add some structure
+                structure = math.sin(px * 0.2 + p) * math.cos(py * 0.2 + p)
+                combined_val = noise * 0.7 + structure * 0.3
+                t = (combined_val + 1) / 2
+                patch[(px, py)] = get_color_from_palette(t, palette)
+        example_patches.append(patch)
+
+    # Synthesize texture using patch matching
+    for y in range(gen_height):
+        for x in range(gen_width):
+            # Choose patch based on position to create variation
+            patch_idx = ((x // patch_size) + (y // patch_size)) % len(example_patches)
+            patch = example_patches[patch_idx]
+
+            px = x % patch_size
+            py = y % patch_size
+
+            color = patch[(px, py)]
+
+            # Add slight variation to reduce obvious repetition
+            variation = (perlin2D(x * 0.003, y * 0.003) + 1) / 2
+            variation_amount = 0.1
+            varied_color = tuple(int(c * (1 - variation_amount + variation * variation_amount)) for c in color)
+
+            pixels[x, y] = varied_color
+            if mirror_h:
+                pixels[width - 1 - x, y] = varied_color
+            if mirror_v:
+                pixels[x, height - 1 - y] = varied_color
+            if mirror_h and mirror_v:
+                pixels[width - 1 - x, height - 1 - y] = varied_color
+
+    return img
+
+def generate_hyperbolic_tiling(width, height, palette, mirror_h=True, mirror_v=True):
+    """Hyperbolic tiling in Poincaré disk inspired by Escher."""
+    img = Image.new('RGB', (width, height), PALETTE['background'])
+    pixels = img.load()
+
+    # Calculate generation region based on mirroring
+    gen_width = (width // 2) if mirror_h else width
+    gen_height = (height // 2) if mirror_v else height
+
+    # Poincaré disk center and radius
+    center_x = gen_width / 2
+    center_y = gen_height / 2
+    disk_radius = min(gen_width, gen_height) / 2 * 0.9
+
+    # Hyperbolic triangle vertices (in Poincaré model)
+    # Using {7,3} tiling (7 triangles meeting at each vertex)
+    num_triangles = 21
+    triangles = []
+
+    # Generate triangles radiating from center
+    for i in range(num_triangles):
+        angle = (2 * math.pi * i) / num_triangles
+        r1 = random.uniform(0.3, 0.7)
+        r2 = random.uniform(0.7, 0.95)
+
+        # Triangle vertices in hyperbolic space
+        v1 = (0, 0)  # Center
+        v2 = (r1 * math.cos(angle), r1 * math.sin(angle))
+        v3 = (r2 * math.cos(angle + math.pi / num_triangles),
+              r2 * math.sin(angle + math.pi / num_triangles))
+
+        triangles.append((v1, v2, v3, i % len(palette)))
+
+    # Render hyperbolic triangles
+    for y in range(gen_height):
+        for x in range(gen_width):
+            # Convert to Poincaré disk coordinates
+            dx = (x - center_x) / disk_radius
+            dy = (y - center_y) / disk_radius
+            r = math.sqrt(dx*dx + dy*dy)
+
+            if r >= 1.0:  # Outside Poincaré disk
+                continue
+
+            # Find which triangle contains this point
+            for v1, v2, v3, color_idx in triangles:
+                # Simple point-in-triangle test (approximate for hyperbolic)
+                # Using barycentric coordinates
+                def sign(p1, p2, p3):
+                    return (p1[0] - p3[0]) * (p2[1] - p3[1]) - (p2[0] - p3[0]) * (p1[1] - p3[1])
+
+                d1 = sign((dx, dy), v1, v2)
+                d2 = sign((dx, dy), v2, v3)
+                d3 = sign((dx, dy), v3, v1)
+
+                has_neg = (d1 < 0) or (d2 < 0) or (d3 < 0)
+                has_pos = (d1 > 0) or (d2 > 0) or (d3 > 0)
+
+                if not (has_neg and has_pos):
+                    # Inside this triangle
+                    color = palette[color_idx]
+
+                    # Add hyperbolic distortion effect
+                    distortion = 1 - r * 0.5
+                    color = tuple(int(c * distortion) for c in color)
+
+                    pixels[x, y] = color
+                    if mirror_h:
+                        pixels[width - 1 - x, y] = color
+                    if mirror_v:
+                        pixels[x, height - 1 - y] = color
+                    if mirror_h and mirror_v:
+                        pixels[width - 1 - x, height - 1 - y] = color
+                    break
+
+    return img
+
+def generate_wang_tiles(width, height, palette, mirror_h=True, mirror_v=True):
+    """Wang tiles creating aperiodic patterns inspired by WangTile."""
+    img = Image.new('RGB', (width, height))
+    pixels = img.load()
+
+    # Calculate generation region based on mirroring
+    gen_width = (width // 2) if mirror_h else width
+    gen_height = (height // 2) if mirror_v else height
+
+    # Wang tile parameters - tiles have colored edges (N, E, S, W)
+    tile_size = 32
+    num_colors = 4  # Number of edge colors
+
+    # Create a set of Wang tiles with edge colors
+    wang_tiles = []
+    for _ in range(16):  # Generate 16 different tiles
+        # Random edge colors (N, E, S, W)
+        edges = tuple(random.randint(0, num_colors - 1) for _ in range(4))
+
+        # Generate tile pattern
+        tile_pattern = {}
+        for ty in range(tile_size):
+            for tx in range(tile_size):
+                # Use edge colors to influence pattern
+                influence = (
+                    edges[0] * (tile_size - ty) / tile_size +  # North
+                    edges[1] * tx / tile_size +                 # East
+                    edges[2] * ty / tile_size +                 # South
+                    edges[3] * (tile_size - tx) / tile_size     # West
+                ) / (num_colors * 4)
+
+                noise = perlin2D(tx * 0.1, ty * 0.1)
+                combined_val = influence + noise * 0.3
+                t = combined_val % 1.0
+
+                tile_pattern[(tx, ty)] = get_color_from_palette(t, palette)
+
+        wang_tiles.append((edges, tile_pattern))
+
+    # Place tiles ensuring edge matching
+    tile_grid = {}
+    for ty in range((gen_height // tile_size) + 1):
+        for tx in range((gen_width // tile_size) + 1):
+            # Find compatible tile
+            required_west = tile_grid.get((tx - 1, ty), (None, None))[0][1] if (tx - 1, ty) in tile_grid else None
+            required_north = tile_grid.get((tx, ty - 1), (None, None))[0][2] if (tx, ty - 1) in tile_grid else None
+
+            # Find matching tile
+            compatible_tiles = []
+            for tile_edges, pattern in wang_tiles:
+                match = True
+                if required_west is not None and tile_edges[3] != required_west:
+                    match = False
+                if required_north is not None and tile_edges[0] != required_north:
+                    match = False
+                if match:
+                    compatible_tiles.append((tile_edges, pattern))
+
+            if compatible_tiles:
+                tile_grid[(tx, ty)] = random.choice(compatible_tiles)
+            else:
+                tile_grid[(tx, ty)] = random.choice(wang_tiles)
+
+    # Render tiles
+    for y in range(gen_height):
+        for x in range(gen_width):
+            tx = x // tile_size
+            ty = y // tile_size
+
+            if (tx, ty) in tile_grid:
+                edges, pattern = tile_grid[(tx, ty)]
+                px = x % tile_size
+                py = y % tile_size
+
+                color = pattern[(px, py)]
+
+                pixels[x, y] = color
+                if mirror_h:
+                    pixels[width - 1 - x, y] = color
+                if mirror_v:
+                    pixels[x, height - 1 - y] = color
+                if mirror_h and mirror_v:
+                    pixels[width - 1 - x, height - 1 - y] = color
+
+    return img
+
+def generate_graph_cut_synthesis(width, height, palette, mirror_h=True, mirror_v=True):
+    """Graph-cut based texture synthesis inspired by TileableTextureSynthesis."""
+    img = Image.new('RGB', (width, height))
+    pixels = img.load()
+
+    # Calculate generation region based on mirroring
+    gen_width = (width // 2) if mirror_h else width
+    gen_height = (height // 2) if mirror_v else height
+
+    # Generate source texture patches
+    patch_size = 48
+    num_patches = 20
+
+    source_patches = []
+    for p in range(num_patches):
+        patch = {}
+        seed_x = random.randint(0, 1000)
+        seed_y = random.randint(0, 1000)
+
+        for py in range(patch_size):
+            for px in range(patch_size):
+                # Multi-scale noise for detail
+                noise = combined(perlin2D, (px + seed_x) * 0.03, (py + seed_y) * 0.03,
+                               octaves=5, persistence=0.5)
+
+                # Add structure
+                structure = math.sin(px * 0.1) * math.cos(py * 0.1)
+                value = noise * 0.8 + structure * 0.2
+
+                t = (value + 1) / 2
+                patch[(px, py)] = get_color_from_palette(t, palette)
+
+        source_patches.append(patch)
+
+    # Quilt patches using graph-cut-like approach
+    overlap = patch_size // 4
+
+    for ty in range(0, gen_height, patch_size - overlap):
+        for tx in range(0, gen_width, patch_size - overlap):
+            # Select patch
+            patch = random.choice(source_patches)
+
+            # Place patch with blending in overlap regions
+            for py in range(patch_size):
+                for px in range(patch_size):
+                    dest_x = tx + px
+                    dest_y = ty + py
+
+                    if dest_x >= gen_width or dest_y >= gen_height:
+                        continue
+
+                    new_color = patch[(px, py)]
+
+                    # Blend in overlap regions
+                    blend = 1.0
+                    if px < overlap and tx > 0:
+                        blend = px / overlap
+                    if py < overlap and ty > 0:
+                        blend *= py / overlap
+
+                    if blend < 1.0 and 0 <= dest_x < gen_width and 0 <= dest_y < gen_height:
+                        existing = pixels[dest_x, dest_y]
+                        if existing != (0, 0, 0):  # If pixel already set
+                            new_color = lerp_color(existing, new_color, blend)
+
+                    pixels[dest_x, dest_y] = new_color
+                    if mirror_h:
+                        pixels[width - 1 - dest_x, dest_y] = new_color
+                    if mirror_v:
+                        pixels[dest_x, height - 1 - dest_y] = new_color
+                    if mirror_h and mirror_v:
+                        pixels[width - 1 - dest_x, height - 1 - dest_y] = new_color
+
+    return img
+
+def generate_gaussian_tiling(width, height, palette, mirror_h=True, mirror_v=True):
+    """Gaussian-masked overlapping for seamless tiling inspired by TileMaker."""
+    img = Image.new('RGB', (width, height))
+    pixels = img.load()
+
+    # Calculate generation region based on mirroring
+    gen_width = (width // 2) if mirror_h else width
+    gen_height = (height // 2) if mirror_v else height
+
+    # Generate base tile
+    tile_size = 128
+    base_tile = {}
+
+    for ty in range(tile_size):
+        for tx in range(tile_size):
+            # Generate pattern with structure
+            noise = combined(perlin2D, tx * 0.02, ty * 0.02, octaves=4, persistence=0.6)
+
+            # Add directional structure
+            angle_noise = simplex2D(tx * 0.01, ty * 0.01) * math.pi
+            directional = math.sin(tx * 0.05 + angle_noise) * math.cos(ty * 0.05 + angle_noise)
+
+            value = noise * 0.7 + directional * 0.3
+            t = (value + 1) / 2
+
+            base_tile[(tx, ty)] = get_color_from_palette(t, palette)
+
+    # Gaussian mask for smooth blending
+    def gaussian_weight(x, y, sigma):
+        return math.exp(-(x*x + y*y) / (2 * sigma * sigma))
+
+    # Tile with Gaussian blending
+    sigma = tile_size / 6
+
+    for y in range(gen_height):
+        for x in range(gen_width):
+            # Sample from multiple overlapping tiles
+            accumulated_color = [0, 0, 0]
+            total_weight = 0
+
+            # Check 4 nearest tile centers
+            for ty_offset in [-1, 0]:
+                for tx_offset in [-1, 0]:
+                    tile_center_x = ((x // tile_size) + tx_offset) * tile_size + tile_size // 2
+                    tile_center_y = ((y // tile_size) + ty_offset) * tile_size + tile_size // 2
+
+                    # Distance from tile center
+                    dx = x - tile_center_x
+                    dy = y - tile_center_y
+
+                    # Gaussian weight
+                    weight = gaussian_weight(dx, dy, sigma)
+
+                    # Sample from tile (wrap coordinates)
+                    sample_x = x % tile_size
+                    sample_y = y % tile_size
+
+                    tile_color = base_tile[(sample_x, sample_y)]
+
+                    accumulated_color[0] += tile_color[0] * weight
+                    accumulated_color[1] += tile_color[1] * weight
+                    accumulated_color[2] += tile_color[2] * weight
+                    total_weight += weight
+
+            # Normalize
+            if total_weight > 0:
+                final_color = tuple(int(c / total_weight) for c in accumulated_color)
+            else:
+                final_color = base_tile[(x % tile_size, y % tile_size)]
+
+            pixels[x, y] = final_color
+            if mirror_h:
+                pixels[width - 1 - x, y] = final_color
+            if mirror_v:
+                pixels[x, height - 1 - y] = final_color
+            if mirror_h and mirror_v:
+                pixels[width - 1 - x, height - 1 - y] = final_color
+
+    return img
+
 # ============================================================================
 # MAIN GENERATION
 # ============================================================================
@@ -2348,6 +2787,12 @@ GENERATORS = {
     'voxel_world': ('Voxel World Engine', generate_voxel_world),
     'multiangle_voxels': ('Multi-Angle Voxels', generate_multiangle_voxels),
     'procedural_voxel_mesh': ('Procedural Voxel Mesh', generate_procedural_voxel_mesh),
+    'seamless_texture': ('Seamless Texture Tiling', generate_seamless_texture),
+    'example_synthesis': ('Example-Based Synthesis', generate_example_synthesis),
+    'hyperbolic_tiling': ('Hyperbolic Tiling', generate_hyperbolic_tiling),
+    'wang_tiles': ('Wang Tiles', generate_wang_tiles),
+    'graph_cut_synthesis': ('Graph-Cut Synthesis', generate_graph_cut_synthesis),
+    'gaussian_tiling': ('Gaussian Tiling', generate_gaussian_tiling),
 }
 
 def add_logo(img, logo_path):
