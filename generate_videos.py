@@ -369,6 +369,232 @@ def generate_cellular_automata_frame(width, height, palette, t, mirror_h=True, m
 
     return img
 
+def generate_plotter_art_frame(width, height, palette, t, mirror_h=True, mirror_v=True):
+    """
+    Animated plotter-style geometric art with rotating shapes.
+    """
+    img = Image.new('RGB', (width, height), PALETTE['background'])
+    draw = ImageDraw.Draw(img, 'RGBA')
+
+    gen_width = (width // 2) if mirror_h else width
+    gen_height = (height // 2) if mirror_v else height
+
+    # Animated rotation based on time
+    base_rotation = t * 2 * math.pi
+
+    # Create concentric geometric shapes with rotation
+    num_layers = 15
+    center_x = gen_width // 2
+    center_y = gen_height // 2
+
+    random.seed(42)  # Consistent shapes across frames
+
+    for i in range(num_layers):
+        radius = (i + 1) * 40
+        sides = random.choice([3, 4, 5, 6, 8])
+        rotation = base_rotation + i * 0.15
+
+        # Calculate polygon points
+        points = []
+        for s in range(sides):
+            angle = (2 * math.pi * s / sides) + rotation
+            x = center_x + radius * math.cos(angle)
+            y = center_y + radius * math.sin(angle)
+            points.append((x, y))
+
+        points.append(points[0])  # Close polygon
+
+        # Color based on layer
+        value = i / num_layers
+        color = get_color_from_palette(value, palette)
+        alpha = 50
+
+        # Draw polygon
+        draw.line(points, fill=color + (alpha,), width=2)
+
+        # Mirror
+        if mirror_h:
+            mirrored_h = [(width - 1 - x, y) for x, y in points]
+            draw.line(mirrored_h, fill=color + (alpha,), width=2)
+        if mirror_v:
+            mirrored_v = [(x, height - 1 - y) for x, y in points]
+            draw.line(mirrored_v, fill=color + (alpha,), width=2)
+        if mirror_h and mirror_v:
+            mirrored_both = [(width - 1 - x, height - 1 - y) for x, y in points]
+            draw.line(mirrored_both, fill=color + (alpha,), width=2)
+
+    return img
+
+def generate_spiral_frame(width, height, palette, t, mirror_h=True, mirror_v=True):
+    """
+    Animated spiral patterns with expanding/contracting motion.
+    """
+    img = Image.new('RGB', (width, height), PALETTE['background'])
+    draw = ImageDraw.Draw(img, 'RGBA')
+
+    gen_width = (width // 2) if mirror_h else width
+    gen_height = (height // 2) if mirror_v else height
+
+    center_x = gen_width // 2
+    center_y = gen_height // 2
+
+    # Pulsing expansion based on time
+    expansion = math.sin(t * 2 * math.pi) * 0.3 + 1.0
+
+    num_spirals = 8
+    random.seed(42)
+
+    for spiral_idx in range(num_spirals):
+        points = []
+        num_points = 200
+        max_radius = 300 * expansion
+
+        phase_offset = (spiral_idx / num_spirals) * 2 * math.pi
+
+        for i in range(num_points):
+            progress = i / num_points
+            radius = progress * max_radius
+            angle = progress * 4 * math.pi + phase_offset + t * 2 * math.pi
+
+            x = center_x + radius * math.cos(angle)
+            y = center_y + radius * math.sin(angle)
+
+            if 0 <= x < gen_width and 0 <= y < gen_height:
+                points.append((x, y))
+
+        if len(points) > 1:
+            value = spiral_idx / num_spirals
+            color = get_color_from_palette(value, palette)
+            alpha = 40
+
+            draw.line(points, fill=color + (alpha,), width=2)
+
+            if mirror_h:
+                mirrored_h = [(width - 1 - x, y) for x, y in points]
+                draw.line(mirrored_h, fill=color + (alpha,), width=2)
+            if mirror_v:
+                mirrored_v = [(x, height - 1 - y) for x, y in points]
+                draw.line(mirrored_v, fill=color + (alpha,), width=2)
+            if mirror_h and mirror_v:
+                mirrored_both = [(width - 1 - x, height - 1 - y) for x, y in points]
+                draw.line(mirrored_both, fill=color + (alpha,), width=2)
+
+    return img
+
+def generate_rings_frame(width, height, palette, t, mirror_h=True, mirror_v=True):
+    """
+    Animated concentric rings with wave motion.
+    """
+    img = Image.new('RGB', (width, height), PALETTE['background'])
+    draw = ImageDraw.Draw(img, 'RGBA')
+
+    gen_width = (width // 2) if mirror_h else width
+    gen_height = (height // 2) if mirror_v else height
+
+    center_x = gen_width // 2
+    center_y = gen_height // 2
+
+    time_offset = t * 2 * math.pi
+
+    num_rings = 30
+    for i in range(num_rings):
+        # Pulsing radius
+        base_radius = (i + 1) * 25
+        pulse = math.sin(time_offset + i * 0.3) * 10
+        radius = base_radius + pulse
+
+        # Draw circle
+        bbox = [
+            center_x - radius, center_y - radius,
+            center_x + radius, center_y + radius
+        ]
+
+        value = (i / num_rings + t) % 1.0
+        color = get_color_from_palette(value, palette)
+        alpha = 60
+
+        draw.ellipse(bbox, outline=color + (alpha,), width=2)
+
+        # Mirror
+        if mirror_h:
+            bbox_h = [width - 1 - bbox[2], bbox[1], width - 1 - bbox[0], bbox[3]]
+            draw.ellipse(bbox_h, outline=color + (alpha,), width=2)
+        if mirror_v:
+            bbox_v = [bbox[0], height - 1 - bbox[3], bbox[2], height - 1 - bbox[1]]
+            draw.ellipse(bbox_v, outline=color + (alpha,), width=2)
+        if mirror_h and mirror_v:
+            bbox_both = [width - 1 - bbox[2], height - 1 - bbox[3], width - 1 - bbox[0], height - 1 - bbox[1]]
+            draw.ellipse(bbox_both, outline=color + (alpha,), width=2)
+
+    return img
+
+def generate_grid_distortion_frame(width, height, palette, t, mirror_h=True, mirror_v=True):
+    """
+    Animated grid with wave distortion.
+    """
+    img = Image.new('RGB', (width, height), PALETTE['background'])
+    draw = ImageDraw.Draw(img, 'RGBA')
+
+    gen_width = (width // 2) if mirror_h else width
+    gen_height = (height // 2) if mirror_v else height
+
+    time_offset = t * 2 * math.pi
+
+    spacing = 40
+    amplitude = 20
+
+    # Horizontal lines
+    for y in range(0, gen_height, spacing):
+        points = []
+        for x in range(0, gen_width, 5):
+            # Add wave distortion
+            wave_y = y + amplitude * math.sin(x * 0.02 + time_offset)
+            points.append((x, wave_y))
+
+        if len(points) > 1:
+            value = (y / gen_height + t) % 1.0
+            color = get_color_from_palette(value, palette)
+            alpha = 80
+
+            draw.line(points, fill=color + (alpha,), width=2)
+
+            if mirror_h:
+                mirrored_h = [(width - 1 - x, y) for x, y in points]
+                draw.line(mirrored_h, fill=color + (alpha,), width=2)
+            if mirror_v:
+                mirrored_v = [(x, height - 1 - y) for x, y in points]
+                draw.line(mirrored_v, fill=color + (alpha,), width=2)
+            if mirror_h and mirror_v:
+                mirrored_both = [(width - 1 - x, height - 1 - y) for x, y in points]
+                draw.line(mirrored_both, fill=color + (alpha,), width=2)
+
+    # Vertical lines
+    for x in range(0, gen_width, spacing):
+        points = []
+        for y in range(0, gen_height, 5):
+            # Add wave distortion
+            wave_x = x + amplitude * math.sin(y * 0.02 + time_offset + math.pi/2)
+            points.append((wave_x, y))
+
+        if len(points) > 1:
+            value = (x / gen_width + t + 0.5) % 1.0
+            color = get_color_from_palette(value, palette)
+            alpha = 80
+
+            draw.line(points, fill=color + (alpha,), width=2)
+
+            if mirror_h:
+                mirrored_h = [(width - 1 - px, py) for px, py in points]
+                draw.line(mirrored_h, fill=color + (alpha,), width=2)
+            if mirror_v:
+                mirrored_v = [(px, height - 1 - py) for px, py in points]
+                draw.line(mirrored_v, fill=color + (alpha,), width=2)
+            if mirror_h and mirror_v:
+                mirrored_both = [(width - 1 - px, height - 1 - py) for px, py in points]
+                draw.line(mirrored_both, fill=color + (alpha,), width=2)
+
+    return img
+
 # ============================================================================
 # VIDEO GENERATORS DICTIONARY
 # ============================================================================
@@ -380,6 +606,10 @@ GENERATORS = {
     'voronoi': ('Voronoi Cells', generate_voronoi_frame),
     'fractal_noise': ('Fractal Noise', generate_fractal_noise_frame),
     'cellular': ('Cellular Automata', generate_cellular_automata_frame),
+    'plotter_art': ('Plotter Art', generate_plotter_art_frame),
+    'spiral': ('Spiral Patterns', generate_spiral_frame),
+    'rings': ('Concentric Rings', generate_rings_frame),
+    'grid_distortion': ('Grid Distortion', generate_grid_distortion_frame),
 }
 
 # ============================================================================
