@@ -2995,6 +2995,9 @@ def draw_pixel_character(draw, x, y, frame, palette, char_type='walk', scale=4):
         all_pixels = body + limbs
 
     # Draw the character
+    # Note: New character types (swim, climb, crawl, combat, idle, particle,
+    # crouch, stand, vehicle, procedural, celebrate, wave, point, cheer)
+    # will use the 'run' animation above as a default fallback
     for row_idx, row in enumerate(all_pixels):
         for col_idx, pixel in enumerate(row):
             if pixel > 0:
@@ -4288,6 +4291,2017 @@ def generate_isometric_stairs_frame(width, height, palette, t, mirror_h=True, mi
     return img
 
 # ============================================================================
+# NEW SPRITE CHARACTER GENERATORS
+# ============================================================================
+
+def generate_swimming_character_frame(width, height, palette, t, mirror_h=True, mirror_v=True):
+    """
+    Swimming character - side-view swim cycle with arm strokes and bubbles.
+    """
+    img = Image.new('RGB', (width, height), PALETTE['background'])
+    draw = ImageDraw.Draw(img, 'RGBA')
+
+    scale = 4
+    char_width = 6 * scale
+    char_height = 12 * scale
+    num_characters = 5
+
+    time_2pi = t * 2 * math.pi
+
+    for i in range(num_characters):
+        # Horizontal swimming motion with wave
+        base_x = (width // num_characters) * i + 100
+        base_y = height // 2 + math.sin(time_2pi + i * 1.5) * 50
+
+        # Horizontal movement
+        x_pos = base_x + (t * width) % width - 100
+
+        # Draw character
+        frame = t
+        draw_pixel_character(draw, int(x_pos), int(base_y), frame, palette, char_type='swim', scale=scale)
+
+        # Draw bubbles
+        for b in range(3):
+            bubble_offset = (t + i * 0.3 + b * 0.2) % 1.0
+            bubble_x = x_pos - 20 - b * 15
+            bubble_y = base_y - bubble_offset * 80
+            bubble_size = 3 + b
+            draw.ellipse([bubble_x, bubble_y, bubble_x + bubble_size, bubble_y + bubble_size],
+                        fill=palette[i % len(palette)] + (100,))
+
+    return img
+
+def generate_climbing_character_frame(width, height, palette, t, mirror_h=True, mirror_v=True):
+    """
+    Climbing character - vertical climbing animation with hand-over-hand movement.
+    """
+    img = Image.new('RGB', (width, height), PALETTE['background'])
+    draw = ImageDraw.Draw(img, 'RGBA')
+
+    scale = 4
+    num_characters = 4
+
+    time_2pi = t * 2 * math.pi
+
+    for i in range(num_characters):
+        x_pos = (width // (num_characters + 1)) * (i + 1)
+        # Vertical climbing motion
+        y_pos = height - (t * height * 1.5) % (height * 1.2) + 100
+
+        # Draw vertical wall/rope
+        wall_x = x_pos - 10
+        draw.rectangle([wall_x, 0, wall_x + 3, height], fill=palette[i % len(palette)] + (80,))
+
+        # Draw character
+        frame = t
+        draw_pixel_character(draw, int(x_pos), int(y_pos), frame, palette, char_type='climb', scale=scale)
+
+    return img
+
+def generate_crawling_character_frame(width, height, palette, t, mirror_h=True, mirror_v=True):
+    """
+    Crawling character - low profile crawling with alternating arm/leg motion.
+    """
+    img = Image.new('RGB', (width, height), PALETTE['background'])
+    draw = ImageDraw.Draw(img, 'RGBA')
+
+    scale = 4
+    num_characters = 4
+    ground_y = height * 2 // 3
+
+    # Draw ground line
+    draw.line([(0, ground_y), (width, ground_y)], fill=PALETTE['foreground'], width=2)
+
+    for i in range(num_characters):
+        # Horizontal crawling motion
+        x_pos = ((t + i * 0.25) * width) % (width + 100) - 50
+        y_pos = ground_y - 20
+
+        # Draw character
+        frame = t
+        draw_pixel_character(draw, int(x_pos), int(y_pos), frame, palette, char_type='crawl', scale=scale)
+
+    return img
+
+def generate_combat_character_frame(width, height, palette, t, mirror_h=True, mirror_v=True):
+    """
+    Combat character - punching/kicking attack animations.
+    """
+    img = Image.new('RGB', (width, height), PALETTE['background'])
+    draw = ImageDraw.Draw(img, 'RGBA')
+
+    scale = 5
+    num_characters = 3
+    ground_y = height * 2 // 3
+
+    # Draw ground
+    draw.line([(0, ground_y), (width, ground_y)], fill=PALETTE['foreground'], width=2)
+
+    for i in range(num_characters):
+        x_pos = (width // (num_characters + 1)) * (i + 1)
+        y_pos = ground_y - 60
+
+        # Draw character
+        frame = t + i * 0.33
+        draw_pixel_character(draw, int(x_pos), int(y_pos), frame, palette, char_type='combat', scale=scale)
+
+        # Attack effect when punching
+        punch_phase = (frame * 4) % 1.0
+        if punch_phase < 0.25:
+            effect_x = x_pos + 40
+            effect_y = y_pos + 15
+            effect_size = int(punch_phase * 80)
+            draw.ellipse([effect_x, effect_y, effect_x + effect_size, effect_y + effect_size],
+                        fill=palette[i % len(palette)] + (150,))
+
+    return img
+
+def generate_idle_breathing_frame(width, height, palette, t, mirror_h=True, mirror_v=True):
+    """
+    Idle breathing - subtle breathing animation with occasional blinks/shifts.
+    """
+    img = Image.new('RGB', (width, height), PALETTE['background'])
+    draw = ImageDraw.Draw(img, 'RGBA')
+
+    scale = 6
+    num_characters = 3
+    ground_y = height * 2 // 3
+
+    time_2pi = t * 2 * math.pi
+
+    # Draw ground
+    draw.line([(0, ground_y), (width, ground_y)], fill=PALETTE['foreground'], width=2)
+
+    for i in range(num_characters):
+        x_pos = (width // (num_characters + 1)) * (i + 1)
+        # Subtle breathing motion
+        breath = math.sin(time_2pi * 2 + i) * 2
+        y_pos = ground_y - 72 + breath
+
+        # Draw character
+        frame = t + i * 0.5
+        draw_pixel_character(draw, int(x_pos), int(y_pos), frame, palette, char_type='idle', scale=scale)
+
+    return img
+
+def generate_sprite_particles_frame(width, height, palette, t, mirror_h=True, mirror_v=True):
+    """
+    Sprite particles - school of fish or flock of birds using sprite duplication.
+    """
+    img = Image.new('RGB', (width, height), PALETTE['background'])
+    draw = ImageDraw.Draw(img, 'RGBA')
+
+    scale = 3
+    num_particles = 40
+
+    time_2pi = t * 2 * math.pi
+
+    random.seed(42)
+
+    for i in range(num_particles):
+        # Create flocking/schooling behavior
+        angle = random.random() * math.pi * 2
+        radius = random.random() * 200 + 100
+        speed = random.random() * 0.5 + 0.5
+
+        # Circular motion with variation
+        base_angle = time_2pi * speed + angle
+        x_pos = width // 2 + math.cos(base_angle) * radius
+        y_pos = height // 2 + math.sin(base_angle) * radius * 0.6
+
+        # Add wave motion
+        y_pos += math.sin(time_2pi * 2 + i * 0.5) * 20
+
+        # Draw small fish/bird sprite
+        frame = t + i * 0.1
+        draw_pixel_character(draw, int(x_pos), int(y_pos), frame, palette, char_type='particle', scale=scale)
+
+    return img
+
+def generate_transforming_sprite_frame(width, height, palette, t, mirror_h=True, mirror_v=True):
+    """
+    Transforming sprite - morphing between two forms (e.g., crouch to stand).
+    """
+    img = Image.new('RGB', (width, height), PALETTE['background'])
+    draw = ImageDraw.Draw(img, 'RGBA')
+
+    scale = 6
+    num_characters = 3
+    ground_y = height * 2 // 3
+
+    # Draw ground
+    draw.line([(0, ground_y), (width, ground_y)], fill=PALETTE['foreground'], width=2)
+
+    for i in range(num_characters):
+        x_pos = (width // (num_characters + 1)) * (i + 1)
+
+        # Transformation phase (0 = form1, 1 = form2)
+        transform_t = (t + i * 0.33) % 1.0
+
+        # Height changes during transformation
+        if transform_t < 0.5:
+            y_pos = ground_y - 60
+            char_type = 'crouch'
+        else:
+            y_pos = ground_y - 72
+            char_type = 'stand'
+
+        # Smooth transition
+        if 0.4 < transform_t < 0.6:
+            y_pos = ground_y - 60 - (transform_t - 0.4) * 60
+
+        # Draw character
+        draw_pixel_character(draw, int(x_pos), int(y_pos), t, palette, char_type=char_type, scale=scale)
+
+    return img
+
+def generate_multi_sprite_interaction_frame(width, height, palette, t, mirror_h=True, mirror_v=True):
+    """
+    Multi-sprite interaction - two characters passing an object or dancing together.
+    """
+    img = Image.new('RGB', (width, height), PALETTE['background'])
+    draw = ImageDraw.Draw(img, 'RGBA')
+
+    scale = 5
+    ground_y = height * 2 // 3
+    center_x = width // 2
+
+    time_2pi = t * 2 * math.pi
+
+    # Draw ground
+    draw.line([(0, ground_y), (width, ground_y)], fill=PALETTE['foreground'], width=2)
+
+    # Two characters dancing/interacting
+    char1_x = center_x - 80 + math.sin(time_2pi) * 30
+    char2_x = center_x + 80 - math.sin(time_2pi) * 30
+    char_y = ground_y - 60
+
+    # Draw characters
+    draw_pixel_character(draw, int(char1_x), int(char_y), t, palette, char_type='dance', scale=scale)
+    draw_pixel_character(draw, int(char2_x), int(char_y), t + 0.5, palette, char_type='dance', scale=scale)
+
+    # Draw object being passed
+    object_x = center_x + math.sin(time_2pi * 2) * 60
+    object_y = char_y - 20 + abs(math.sin(time_2pi * 2)) * 30
+    draw.ellipse([object_x - 8, object_y - 8, object_x + 8, object_y + 8],
+                fill=palette[4])
+
+    return img
+
+def generate_vehicle_sprites_frame(width, height, palette, t, mirror_h=True, mirror_v=True):
+    """
+    Vehicle sprites - cars, bikes, or spaceships with wheel/thruster animations.
+    """
+    img = Image.new('RGB', (width, height), PALETTE['background'])
+    draw = ImageDraw.Draw(img, 'RGBA')
+
+    scale = 4
+    num_vehicles = 4
+
+    for i in range(num_vehicles):
+        # Horizontal movement
+        x_pos = ((t + i * 0.25) * width * 1.2) % (width + 200) - 100
+        y_pos = 150 + i * 120
+
+        # Draw vehicle
+        frame = t
+        draw_pixel_character(draw, int(x_pos), int(y_pos), frame, palette, char_type='vehicle', scale=scale)
+
+        # Thruster/exhaust effect
+        for e in range(3):
+            exhaust_x = x_pos - 30 - e * 15
+            exhaust_y = y_pos + 10
+            exhaust_size = 5 - e
+            alpha = 200 - e * 60
+            draw.ellipse([exhaust_x, exhaust_y, exhaust_x + exhaust_size, exhaust_y + exhaust_size],
+                        fill=palette[(i + e) % len(palette)] + (alpha,))
+
+    return img
+
+def generate_procedural_sprite_frame(width, height, palette, t, mirror_h=True, mirror_v=True):
+    """
+    Procedural sprite generation - random character generation with varied body shapes, colors.
+    """
+    img = Image.new('RGB', (width, height), PALETTE['background'])
+    draw = ImageDraw.Draw(img, 'RGBA')
+
+    scale = 4
+    num_characters = 8
+
+    # Generate varied characters
+    random.seed(int(t * 10))  # Changes every 0.1 t
+
+    for i in range(num_characters):
+        x_pos = (width // (num_characters + 1)) * (i + 1)
+        y_pos = height // 2 + random.randint(-100, 100)
+
+        # Randomize character properties
+        char_scale = scale + random.randint(-1, 2)
+        color_offset = random.randint(0, len(palette) - 1)
+        char_palette = palette[color_offset:] + palette[:color_offset]
+
+        # Draw procedurally varied character
+        draw_pixel_character(draw, int(x_pos), int(y_pos), t, char_palette, char_type='procedural', scale=char_scale)
+
+    return img
+
+def generate_sprite_shadows_frame(width, height, palette, t, mirror_h=True, mirror_v=True):
+    """
+    Sprite shadows - characters with dynamic shadow projections.
+    """
+    img = Image.new('RGB', (width, height), PALETTE['background'])
+    draw = ImageDraw.Draw(img, 'RGBA')
+
+    scale = 5
+    num_characters = 3
+    ground_y = height * 2 // 3
+
+    time_2pi = t * 2 * math.pi
+
+    # Draw ground
+    draw.line([(0, ground_y), (width, ground_y)], fill=PALETTE['foreground'], width=2)
+
+    for i in range(num_characters):
+        x_pos = (width // (num_characters + 1)) * (i + 1)
+        # Jumping motion
+        jump = abs(math.sin(time_2pi + i * 2)) * 100
+        y_pos = ground_y - 60 - jump
+
+        # Draw shadow (scales with height)
+        shadow_scale = 1.0 - (jump / 150)
+        shadow_width = 40 * shadow_scale
+        shadow_height = 8 * shadow_scale
+        shadow_x = x_pos - shadow_width // 2
+        shadow_y = ground_y - 5
+        draw.ellipse([shadow_x, shadow_y, shadow_x + shadow_width, shadow_y + shadow_height],
+                    fill=(0, 0, 0, 100))
+
+        # Draw character
+        draw_pixel_character(draw, int(x_pos), int(y_pos), t, palette, char_type='jump', scale=scale)
+
+    return img
+
+def generate_emoting_sprites_frame(width, height, palette, t, mirror_h=True, mirror_v=True):
+    """
+    Emoting sprites - emotion animations (celebrating, waving, pointing).
+    """
+    img = Image.new('RGB', (width, height), PALETTE['background'])
+    draw = ImageDraw.Draw(img, 'RGBA')
+
+    scale = 5
+    num_characters = 4
+    ground_y = height * 2 // 3
+
+    time_2pi = t * 2 * math.pi
+
+    # Draw ground
+    draw.line([(0, ground_y), (width, ground_y)], fill=PALETTE['foreground'], width=2)
+
+    emotions = ['celebrate', 'wave', 'point', 'cheer']
+
+    for i in range(num_characters):
+        x_pos = (width // (num_characters + 1)) * (i + 1)
+        y_pos = ground_y - 60
+
+        # Draw character with emotion
+        emotion = emotions[i % len(emotions)]
+        draw_pixel_character(draw, int(x_pos), int(y_pos), t + i * 0.25, palette, char_type=emotion, scale=scale)
+
+        # Draw emotion indicator (! or ? or heart)
+        indicator_y = y_pos - 80 - abs(math.sin(time_2pi * 2 + i)) * 10
+        if emotion == 'celebrate':
+            # Hearts or stars
+            for s in range(3):
+                star_x = x_pos - 20 + s * 20
+                star_y = indicator_y - s * 15
+                draw.text((star_x, star_y), "★", fill=palette[i % len(palette)])
+
+    return img
+
+# ============================================================================
+# NEW VOXEL GENERATORS
+# ============================================================================
+
+def generate_voxel_trees_frame(width, height, palette, t, mirror_h=True, mirror_v=True):
+    """
+    Voxel trees/forest - procedural tree growth with branches and leaves.
+    """
+    img = Image.new('RGB', (width, height), PALETTE['background'])
+    draw = ImageDraw.Draw(img)
+
+    cx, cy = width // 2, height // 2
+    time_2pi = t * 2 * math.pi
+
+    num_trees = 6
+
+    for tree_idx in range(num_trees):
+        # Tree position
+        angle = (tree_idx / num_trees) * math.pi * 2
+        radius = 150
+        tree_x = math.cos(angle) * radius
+        tree_y = math.sin(angle) * radius
+
+        # Tree trunk
+        trunk_height = 8
+        cube_size = 15
+
+        for h in range(trunk_height):
+            z = h * cube_size
+            # Trunk color (brown)
+            draw_iso_cube(draw, tree_x, tree_y, z, cube_size, palette, 2)
+
+        # Tree foliage (crown)
+        crown_size = 4
+        crown_z = trunk_height * cube_size
+        growth = math.sin(time_2pi + tree_idx) * 0.2 + 1.0
+
+        for dx in range(-crown_size, crown_size + 1):
+            for dy in range(-crown_size, crown_size + 1):
+                dist = math.sqrt(dx * dx + dy * dy)
+                if dist < crown_size * growth:
+                    for dz in range(3):
+                        leaf_x = tree_x + dx * cube_size
+                        leaf_y = tree_y + dy * cube_size
+                        leaf_z = crown_z + dz * cube_size
+                        # Leaf color (green)
+                        draw_iso_cube(draw, leaf_x, leaf_y, leaf_z, cube_size, palette, 6)
+
+    return img
+
+def generate_voxel_clouds_frame(width, height, palette, t, mirror_h=True, mirror_v=True):
+    """
+    Voxel clouds - volumetric clouds with Perlin noise, drifting across sky.
+    """
+    img = Image.new('RGB', (width, height), PALETTE['background'])
+    draw = ImageDraw.Draw(img)
+
+    cx, cy = width // 2, height // 2
+    cube_size = 20
+
+    time_offset = t * 100
+
+    # Create volumetric cloud
+    cloud_width = 8
+    cloud_height = 4
+    cloud_depth = 6
+
+    num_clouds = 3
+
+    for cloud_idx in range(num_clouds):
+        cloud_x_offset = (cloud_idx * 200 + time_offset * 30) % 600 - 300
+        cloud_y_offset = cloud_idx * 100 - 150
+        cloud_z = 100 + cloud_idx * 30
+
+        for x in range(cloud_width):
+            for y in range(cloud_depth):
+                for z in range(cloud_height):
+                    # Use Perlin noise to determine voxel presence
+                    noise = perlin2D(
+                        (x + time_offset) * 0.3,
+                        (y + cloud_idx) * 0.3
+                    )
+
+                    if noise > 0.2:
+                        vx = cloud_x_offset + x * cube_size
+                        vy = cloud_y_offset + y * cube_size
+                        vz = cloud_z + z * cube_size
+
+                        # White/light gray clouds
+                        color_idx = 7 if noise > 0.5 else 6
+                        draw_iso_cube(draw, vx, vy, vz, cube_size, palette, color_idx)
+
+    return img
+
+def generate_voxel_water_frame(width, height, palette, t, mirror_h=True, mirror_v=True):
+    """
+    Voxel water - flowing water simulation with ripples and waves.
+    """
+    img = Image.new('RGB', (width, height), PALETTE['background'])
+    draw = ImageDraw.Draw(img)
+
+    cx, cy = width // 2, height // 2
+    cube_size = 15
+    time_2pi = t * 2 * math.pi
+
+    grid_size = 12
+
+    for gx in range(grid_size):
+        for gy in range(grid_size):
+            # Center the grid
+            x = (gx - grid_size // 2) * cube_size * 1.5
+            y = (gy - grid_size // 2) * cube_size * 1.5
+
+            # Wave height using sine waves
+            dist_from_center = math.sqrt(
+                ((gx - grid_size // 2) ** 2 + (gy - grid_size // 2) ** 2)
+            )
+            wave_height = math.sin(dist_from_center * 0.5 - time_2pi * 2) * 20
+            z = wave_height
+
+            # Blue water colors
+            color_idx = 4 if wave_height > 0 else 3
+            draw_iso_cube(draw, x, y, z, cube_size, palette, color_idx)
+
+    return img
+
+def generate_voxel_fire_frame(width, height, palette, t, mirror_h=True, mirror_v=True):
+    """
+    Voxel fire - particle-based fire made of colored voxels rising and dissipating.
+    """
+    img = Image.new('RGB', (width, height), PALETTE['background'])
+    draw = ImageDraw.Draw(img)
+
+    cx, cy = width // 2, height // 2
+    cube_size = 12
+
+    random.seed(42)
+    num_particles = 40
+
+    for i in range(num_particles):
+        # Particle lifecycle
+        particle_t = (t + i * 0.025) % 1.0
+
+        # Random starting position
+        random.seed(i + 100)
+        start_x = random.uniform(-40, 40)
+        start_y = random.uniform(-40, 40)
+
+        # Rise and dissipate
+        x = start_x + random.uniform(-20, 20) * particle_t
+        y = start_y + random.uniform(-20, 20) * particle_t
+        z = particle_t * 200
+
+        # Only draw if not fully dissipated
+        if particle_t < 0.8:
+            # Color changes from red to yellow to transparent
+            if particle_t < 0.3:
+                color_idx = 1  # Red
+            elif particle_t < 0.6:
+                color_idx = 2  # Orange/yellow
+            else:
+                color_idx = 3  # Dim
+
+            draw_iso_cube(draw, x, y, z, cube_size, palette, color_idx)
+
+    return img
+
+def generate_voxel_smoke_frame(width, height, palette, t, mirror_h=True, mirror_v=True):
+    """
+    Voxel smoke - billowing smoke columns with turbulence.
+    """
+    img = Image.new('RGB', (width, height), PALETTE['background'])
+    draw = ImageDraw.Draw(img)
+
+    cube_size = 15
+    time_offset = t * 100
+
+    num_plumes = 3
+
+    for plume_idx in range(num_plumes):
+        plume_x = (plume_idx - 1) * 150
+        plume_y = 0
+
+        # Multiple voxels per plume
+        for i in range(25):
+            particle_t = (t + i * 0.04 + plume_idx * 0.3) % 1.0
+
+            # Turbulence using Perlin noise
+            noise_x = perlin2D(i * 0.3, time_offset * 0.01) * 60
+            noise_y = perlin2D(i * 0.3 + 100, time_offset * 0.01) * 60
+
+            x = plume_x + noise_x
+            y = plume_y + noise_y
+            z = particle_t * 250
+
+            if particle_t < 0.9:
+                # Gray smoke
+                color_idx = 0 if particle_t < 0.5 else 7
+                draw_iso_cube(draw, x, y, z, cube_size, palette, color_idx)
+
+    return img
+
+def generate_voxel_maze_frame(width, height, palette, t, mirror_h=True, mirror_v=True):
+    """
+    Voxel maze - animated maze generation using recursive backtracking.
+    """
+    img = Image.new('RGB', (width, height), PALETTE['background'])
+    draw = ImageDraw.Draw(img)
+
+    cube_size = 25
+    maze_size = 7
+    time_2pi = t * 2 * math.pi
+
+    # Simple maze pattern (simplified for animation)
+    random.seed(int(t * 4))  # Changes maze pattern over time
+
+    for x in range(maze_size):
+        for y in range(maze_size):
+            # Create wall pattern
+            if random.random() > 0.5:
+                wall_height = random.randint(2, 5)
+
+                for z in range(wall_height):
+                    vx = (x - maze_size // 2) * cube_size * 1.5
+                    vy = (y - maze_size // 2) * cube_size * 1.5
+                    vz = z * cube_size
+
+                    # Pulsing height
+                    pulse = math.sin(time_2pi + x + y) * 5
+                    vz += pulse
+
+                    color_idx = (x + y + z) % len(palette)
+                    draw_iso_cube(draw, vx, vy, vz, cube_size, palette, color_idx)
+
+    return img
+
+def generate_voxel_pillars_frame(width, height, palette, t, mirror_h=True, mirror_v=True):
+    """
+    Voxel pillars - rising/falling columns creating rhythmic patterns.
+    """
+    img = Image.new('RGB', (width, height), PALETTE['background'])
+    draw = ImageDraw.Draw(img)
+
+    cube_size = 20
+    grid_size = 8
+    time_2pi = t * 2 * math.pi
+
+    for gx in range(grid_size):
+        for gy in range(grid_size):
+            # Position
+            x = (gx - grid_size // 2) * cube_size * 2
+            y = (gy - grid_size // 2) * cube_size * 2
+
+            # Height based on position and time
+            dist = math.sqrt((gx - grid_size // 2) ** 2 + (gy - grid_size // 2) ** 2)
+            height = (math.sin(time_2pi * 2 - dist * 0.5) + 1) * 5 + 2
+
+            for h in range(int(height)):
+                z = h * cube_size
+                color_idx = (h + gx + gy) % len(palette)
+                draw_iso_cube(draw, x, y, z, cube_size, palette, color_idx)
+
+    return img
+
+def generate_voxel_spiral_frame(width, height, palette, t, mirror_h=True, mirror_v=True):
+    """
+    Voxel spiral - 3D spiral staircase rotating in space.
+    """
+    img = Image.new('RGB', (width, height), PALETTE['background'])
+    draw = ImageDraw.Draw(img)
+
+    cube_size = 18
+    num_steps = 30
+    time_2pi = t * 2 * math.pi
+
+    for i in range(num_steps):
+        # Spiral parameters
+        angle = i * 0.4 + time_2pi
+        radius = 80 + i * 3
+        z = i * cube_size - num_steps * cube_size // 2
+
+        x = math.cos(angle) * radius
+        y = math.sin(angle) * radius
+
+        color_idx = i % len(palette)
+        draw_iso_cube(draw, x, y, z, cube_size, palette, color_idx)
+
+    return img
+
+def generate_voxel_dna_frame(width, height, palette, t, mirror_h=True, mirror_v=True):
+    """
+    Voxel DNA/molecules - double helix or molecular structures with animated bonds.
+    """
+    img = Image.new('RGB', (width, height), PALETTE['background'])
+    draw = ImageDraw.Draw(img)
+
+    cube_size = 12
+    num_pairs = 15
+    time_2pi = t * 2 * math.pi
+
+    for i in range(num_pairs):
+        # Helix parameters
+        angle1 = i * 0.5 + time_2pi
+        angle2 = angle1 + math.pi
+        radius = 60
+        z = i * cube_size * 2 - num_pairs * cube_size
+
+        # First strand
+        x1 = math.cos(angle1) * radius
+        y1 = math.sin(angle1) * radius
+        draw_iso_cube(draw, x1, y1, z, cube_size, palette, 1)
+
+        # Second strand
+        x2 = math.cos(angle2) * radius
+        y2 = math.sin(angle2) * radius
+        draw_iso_cube(draw, x2, y2, z, cube_size, palette, 5)
+
+        # Connecting rung (draw line of small cubes)
+        steps = 5
+        for s in range(steps):
+            sx = x1 + (x2 - x1) * s / steps
+            sy = y1 + (y2 - y1) * s / steps
+            draw_iso_cube(draw, sx, sy, z, cube_size // 2, palette, 7)
+
+    return img
+
+def generate_voxel_bridges_frame(width, height, palette, t, mirror_h=True, mirror_v=True):
+    """
+    Voxel bridges - procedural bridge construction across gaps.
+    """
+    img = Image.new('RGB', (width, height), PALETTE['background'])
+    draw = ImageDraw.Draw(img)
+
+    cube_size = 18
+    time_2pi = t * 2 * math.pi
+
+    num_bridges = 3
+
+    for bridge_idx in range(num_bridges):
+        z_offset = bridge_idx * 40 - 40
+        rotation = bridge_idx * (2 * math.pi / num_bridges)
+
+        # Bridge parameters
+        bridge_length = 12
+
+        for i in range(bridge_length):
+            # Arc shape
+            x = (i - bridge_length // 2) * cube_size * 1.5
+            y = 0
+            arc_height = -abs(i - bridge_length // 2) * cube_size * 0.3
+            z = arc_height + z_offset
+
+            # Rotate around center
+            rx = x * math.cos(rotation) - y * math.sin(rotation)
+            ry = x * math.sin(rotation) + y * math.cos(rotation)
+
+            # Animation
+            pulse = math.sin(time_2pi + i * 0.3) * 5
+            z += pulse
+
+            color_idx = (i + bridge_idx) % len(palette)
+            draw_iso_cube(draw, rx, ry, z, cube_size, palette, color_idx)
+
+    return img
+
+def generate_voxel_explosion_frame(width, height, palette, t, mirror_h=True, mirror_v=True):
+    """
+    Voxel explosion - expanding shockwave of voxels dispersing outward.
+    """
+    img = Image.new('RGB', (width, height), PALETTE['background'])
+    draw = ImageDraw.Draw(img)
+
+    cube_size = 15
+    num_particles = 80
+
+    random.seed(42)
+
+    for i in range(num_particles):
+        # Random direction
+        angle_h = random.random() * math.pi * 2
+        angle_v = (random.random() - 0.5) * math.pi
+        speed = random.uniform(100, 250)
+
+        # Particle position based on time
+        expansion = t * speed
+
+        x = math.cos(angle_h) * math.cos(angle_v) * expansion
+        y = math.sin(angle_h) * math.cos(angle_v) * expansion
+        z = math.sin(angle_v) * expansion
+
+        # Fade out over time
+        if t < 0.8:
+            alpha_factor = 1.0 - t
+            color_idx = int(t * len(palette)) % len(palette)
+            draw_iso_cube(draw, x, y, z, cube_size, palette, color_idx)
+
+    return img
+
+def generate_voxel_rain_frame(width, height, palette, t, mirror_h=True, mirror_v=True):
+    """
+    Voxel rain - falling voxels with splash effects on ground.
+    """
+    img = Image.new('RGB', (width, height), PALETTE['background'])
+    draw = ImageDraw.Draw(img)
+
+    cube_size = 10
+    num_drops = 50
+
+    random.seed(42)
+
+    # Draw ground plane
+    ground_size = 8
+    for gx in range(ground_size):
+        for gy in range(ground_size):
+            x = (gx - ground_size // 2) * cube_size * 3
+            y = (gy - ground_size // 2) * cube_size * 3
+            draw_iso_cube(draw, x, y, -50, cube_size, palette, 0)
+
+    for i in range(num_drops):
+        random.seed(i + 200)
+        drop_x = random.uniform(-120, 120)
+        drop_y = random.uniform(-120, 120)
+
+        # Falling motion
+        drop_t = (t + i * 0.02) % 1.0
+        drop_z = 200 - drop_t * 250
+
+        # Only draw if above ground
+        if drop_z > -50:
+            draw_iso_cube(draw, drop_x, drop_y, drop_z, cube_size, palette, 4)
+        # Splash effect
+        elif drop_t > 0.8:
+            splash_size = (drop_t - 0.8) * 40
+            draw.ellipse([
+                width // 2 + drop_x - splash_size,
+                height // 2 + drop_y - splash_size,
+                width // 2 + drop_x + splash_size,
+                height // 2 + drop_y + splash_size
+            ], outline=palette[4], width=2)
+
+    return img
+
+def generate_voxel_planets_frame(width, height, palette, t, mirror_h=True, mirror_v=True):
+    """
+    Voxel planets - spherical voxel worlds rotating (using sphere projection).
+    """
+    img = Image.new('RGB', (width, height), PALETTE['background'])
+    draw = ImageDraw.Draw(img)
+
+    cube_size = 12
+    planet_radius = 6
+    time_2pi = t * 2 * math.pi
+
+    num_planets = 3
+
+    for planet_idx in range(num_planets):
+        # Planet orbit
+        orbit_angle = time_2pi + planet_idx * (2 * math.pi / num_planets)
+        orbit_radius = 180
+
+        planet_x = math.cos(orbit_angle) * orbit_radius
+        planet_y = math.sin(orbit_angle) * orbit_radius
+
+        # Create sphere using voxels
+        for x in range(-planet_radius, planet_radius + 1):
+            for y in range(-planet_radius, planet_radius + 1):
+                for z in range(-planet_radius, planet_radius + 1):
+                    # Check if point is inside sphere
+                    dist = math.sqrt(x*x + y*y + z*z)
+                    if dist <= planet_radius:
+                        # Rotate planet
+                        rotation = time_2pi * 2
+                        rx = x * math.cos(rotation) - y * math.sin(rotation)
+                        ry = x * math.sin(rotation) + y * math.cos(rotation)
+
+                        vx = planet_x + rx * cube_size
+                        vy = planet_y + ry * cube_size
+                        vz = z * cube_size
+
+                        # Use noise for surface variation
+                        noise = perlin2D(x * 0.5, y * 0.5)
+                        color_idx = planet_idx * 2 + (1 if noise > 0 else 0)
+                        color_idx = color_idx % len(palette)
+
+                        draw_iso_cube(draw, vx, vy, vz, cube_size, palette, color_idx)
+
+    return img
+
+def generate_voxel_characters_frame(width, height, palette, t, mirror_h=True, mirror_v=True):
+    """
+    Voxel characters - simplified humanoid figures walking/waving in voxel form.
+    """
+    img = Image.new('RGB', (width, height), PALETTE['background'])
+    draw = ImageDraw.Draw(img)
+
+    cube_size = 18
+    num_characters = 3
+    time_2pi = t * 2 * math.pi
+
+    # Draw ground
+    ground_size = 10
+    for gx in range(ground_size):
+        for gy in range(ground_size):
+            x = (gx - ground_size // 2) * cube_size * 2
+            y = (gy - ground_size // 2) * cube_size * 2
+            draw_iso_cube(draw, x, y, -cube_size * 4, cube_size, palette, 0)
+
+    for char_idx in range(num_characters):
+        # Character position
+        char_x = (char_idx - 1) * 120
+        char_y = 0
+        char_z = -cube_size * 3
+
+        # Body (2x2x3 voxels)
+        for bz in range(3):
+            for bx in range(2):
+                x = char_x + bx * cube_size
+                z = char_z + bz * cube_size
+                draw_iso_cube(draw, x, char_y, z, cube_size, palette, char_idx + 1)
+
+        # Head (1 voxel)
+        draw_iso_cube(draw, char_x, char_y, char_z + 3 * cube_size, cube_size, palette, char_idx + 4)
+
+        # Animated arms
+        arm_wave = math.sin(time_2pi * 2 + char_idx) * cube_size
+        # Left arm
+        draw_iso_cube(draw, char_x - cube_size, char_y, char_z + cube_size + arm_wave, cube_size, palette, char_idx + 2)
+        # Right arm
+        draw_iso_cube(draw, char_x + 2 * cube_size, char_y, char_z + cube_size - arm_wave, cube_size, palette, char_idx + 2)
+
+        # Animated legs (walking)
+        leg_phase = int((t * 4 + char_idx) % 2)
+        if leg_phase == 0:
+            # Left leg forward
+            draw_iso_cube(draw, char_x, char_y + cube_size, char_z - cube_size, cube_size, palette, char_idx + 3)
+            # Right leg back
+            draw_iso_cube(draw, char_x + cube_size, char_y - cube_size, char_z - cube_size, cube_size, palette, char_idx + 3)
+        else:
+            # Right leg forward
+            draw_iso_cube(draw, char_x + cube_size, char_y + cube_size, char_z - cube_size, cube_size, palette, char_idx + 3)
+            # Left leg back
+            draw_iso_cube(draw, char_x, char_y - cube_size, char_z - cube_size, cube_size, palette, char_idx + 3)
+
+    return img
+
+def generate_smooth_voxels_frame(width, height, palette, t, mirror_h=True, mirror_v=True):
+    """
+    Smooth voxels (Marching Cubes inspired) - rounded organic shapes vs blocky cubes.
+    """
+    img = Image.new('RGB', (width, height), PALETTE['background'])
+    draw = ImageDraw.Draw(img)
+
+    # Instead of true marching cubes, we'll draw rounded/gradient voxels
+    cube_size = 25
+    grid_size = 6
+    time_2pi = t * 2 * math.pi
+
+    for gx in range(grid_size):
+        for gy in range(grid_size):
+            for gz in range(grid_size):
+                # Metaball-like density field
+                cx = gx - grid_size // 2
+                cy = gy - grid_size // 2
+                cz = gz - grid_size // 2
+
+                # Multiple influence points
+                dist1 = math.sqrt(
+                    (cx - math.sin(time_2pi) * 2) ** 2 +
+                    (cy - math.cos(time_2pi) * 2) ** 2 +
+                    (cz) ** 2
+                )
+                dist2 = math.sqrt(
+                    (cx + math.sin(time_2pi + math.pi) * 2) ** 2 +
+                    (cy + math.cos(time_2pi + math.pi) * 2) ** 2 +
+                    (cz) ** 2
+                )
+
+                # Density threshold
+                density = 3.0 / (dist1 + 0.1) + 3.0 / (dist2 + 0.1)
+
+                if density > 1.5:
+                    x = cx * cube_size * 1.5
+                    y = cy * cube_size * 1.5
+                    z = cz * cube_size * 1.5
+
+                    # Color based on density
+                    color_idx = int(min(density * 2, len(palette) - 1))
+                    draw_iso_cube(draw, x, y, z, cube_size, palette, color_idx)
+
+    return img
+
+# ============================================================================
+# NEW SHADER EFFECTS
+# ============================================================================
+
+def generate_shader_ripple_frame(width, height, palette, t, mirror_h=False, mirror_v=False):
+    """
+    Ripple shader - expanding circular ripples from multiple points.
+    """
+    fragment_shader = '''
+        #version 330
+        out vec4 fragColor;
+        uniform float iTime;
+        uniform vec2 iResolution;
+
+        void main() {
+            vec2 uv = gl_FragCoord.xy / iResolution.xy;
+            vec2 p = uv * 2.0 - 1.0;
+            p.x *= iResolution.x / iResolution.y;
+
+            float value = 0.0;
+
+            // Multiple ripple centers
+            vec2 centers[4];
+            centers[0] = vec2(sin(iTime) * 0.5, cos(iTime) * 0.5);
+            centers[1] = vec2(sin(iTime + 3.14) * 0.5, cos(iTime + 3.14) * 0.5);
+            centers[2] = vec2(sin(iTime * 0.7) * 0.3, cos(iTime * 0.7 + 1.5) * 0.3);
+            centers[3] = vec2(sin(iTime * 1.3 + 2.0) * 0.4, cos(iTime * 1.3) * 0.4);
+
+            for (int i = 0; i < 4; i++) {
+                float dist = length(p - centers[i]);
+                float ripple = sin(dist * 15.0 - iTime * 3.0) / (dist * 10.0 + 1.0);
+                value += ripple;
+            }
+
+            value = value * 0.5 + 0.5;
+
+            // Color gradient
+            vec3 color1 = vec3(0.2, 0.1, 0.3);
+            vec3 color2 = vec3(0.8, 0.3, 0.4);
+            vec3 color3 = vec3(0.4, 0.6, 0.9);
+
+            vec3 col = mix(color1, color2, value);
+            col = mix(col, color3, smoothstep(0.3, 0.7, value));
+
+            fragColor = vec4(col, 1.0);
+        }
+    '''
+    return render_shader(fragment_shader, width, height, palette, t)
+
+def generate_shader_liquid_metal_frame(width, height, palette, t, mirror_h=False, mirror_v=False):
+    """
+    Liquid metal - chrome/mercury-like reflective flow.
+    """
+    fragment_shader = '''
+        #version 330
+        out vec4 fragColor;
+        uniform float iTime;
+        uniform vec2 iResolution;
+
+        // Simple noise function
+        float hash(vec2 p) {
+            return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+        }
+
+        float noise(vec2 p) {
+            vec2 i = floor(p);
+            vec2 f = fract(p);
+            f = f * f * (3.0 - 2.0 * f);
+            float a = hash(i);
+            float b = hash(i + vec2(1.0, 0.0));
+            float c = hash(i + vec2(0.0, 1.0));
+            float d = hash(i + vec2(1.0, 1.0));
+            return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+        }
+
+        void main() {
+            vec2 uv = gl_FragCoord.xy / iResolution.xy;
+            vec2 p = uv * 2.0 - 1.0;
+            p.x *= iResolution.x / iResolution.y;
+
+            // Flowing metal surface
+            float n1 = noise(p * 3.0 + vec2(iTime * 0.5, 0.0));
+            float n2 = noise(p * 5.0 - vec2(0.0, iTime * 0.3));
+            float n3 = noise(p * 7.0 + vec2(iTime * 0.2, iTime * 0.4));
+
+            float combined = n1 * 0.5 + n2 * 0.3 + n3 * 0.2;
+
+            // Metallic reflection
+            float specular = pow(combined, 3.0) * 2.0;
+
+            vec3 baseColor = vec3(0.6, 0.65, 0.7);
+            vec3 highlight = vec3(0.95, 0.98, 1.0);
+
+            vec3 col = mix(baseColor, highlight, specular);
+
+            fragColor = vec4(col, 1.0);
+        }
+    '''
+    return render_shader(fragment_shader, width, height, palette, t)
+
+def generate_shader_oil_slick_frame(width, height, palette, t, mirror_h=False, mirror_v=False):
+    """
+    Oil slick - iridescent rainbow patterns like oil on water.
+    """
+    fragment_shader = '''
+        #version 330
+        out vec4 fragColor;
+        uniform float iTime;
+        uniform vec2 iResolution;
+
+        float hash(vec2 p) {
+            return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+        }
+
+        float noise(vec2 p) {
+            vec2 i = floor(p);
+            vec2 f = fract(p);
+            f = f * f * (3.0 - 2.0 * f);
+            return mix(
+                mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x),
+                mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x),
+                f.y
+            );
+        }
+
+        void main() {
+            vec2 uv = gl_FragCoord.xy / iResolution.xy;
+            vec2 p = uv * 2.0 - 1.0;
+            p.x *= iResolution.x / iResolution.y;
+
+            // Flowing oil surface
+            float n = noise(p * 5.0 + vec2(iTime * 0.3, iTime * 0.2));
+            n += noise(p * 10.0 - vec2(iTime * 0.2, iTime * 0.4)) * 0.5;
+
+            // Iridescent colors (thin film interference)
+            float hue = n * 6.28 + iTime;
+
+            vec3 col = vec3(
+                sin(hue) * 0.5 + 0.5,
+                sin(hue + 2.094) * 0.5 + 0.5,
+                sin(hue + 4.189) * 0.5 + 0.5
+            );
+
+            // Add shimmer
+            float shimmer = pow(noise(p * 20.0 + iTime), 4.0);
+            col += shimmer * 0.3;
+
+            fragColor = vec4(col, 1.0);
+        }
+    '''
+    return render_shader(fragment_shader, width, height, palette, t)
+
+def generate_shader_ink_diffusion_frame(width, height, palette, t, mirror_h=False, mirror_v=False):
+    """
+    Ink diffusion - ink spreading through water simulation.
+    """
+    fragment_shader = '''
+        #version 330
+        out vec4 fragColor;
+        uniform float iTime;
+        uniform vec2 iResolution;
+
+        float hash(vec2 p) {
+            return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+        }
+
+        float noise(vec2 p) {
+            vec2 i = floor(p);
+            vec2 f = fract(p);
+            f = f * f * (3.0 - 2.0 * f);
+            return mix(
+                mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x),
+                mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x),
+                f.y
+            );
+        }
+
+        void main() {
+            vec2 uv = gl_FragCoord.xy / iResolution.xy;
+            vec2 p = uv * 2.0 - 1.0;
+            p.x *= iResolution.x / iResolution.y;
+
+            float dist = length(p);
+
+            // Expanding ink blob
+            float expansion = mod(iTime * 0.3, 1.0);
+            float ink = smoothstep(expansion + 0.1, expansion, dist);
+
+            // Turbulent diffusion
+            float turbulence = noise(p * 5.0 + iTime * 0.5) * 0.2;
+            ink *= (1.0 - turbulence);
+
+            // Tendrils
+            float angle = atan(p.y, p.x);
+            float tendrils = sin(angle * 8.0 + iTime) * 0.05;
+            ink += smoothstep(expansion + 0.2 + tendrils, expansion + tendrils, dist) * 0.3;
+
+            vec3 inkColor = vec3(0.1, 0.05, 0.2);
+            vec3 waterColor = vec3(0.9, 0.95, 1.0);
+
+            vec3 col = mix(waterColor, inkColor, ink);
+
+            fragColor = vec4(col, 1.0);
+        }
+    '''
+    return render_shader(fragment_shader, width, height, palette, t)
+
+def generate_shader_watercolor_frame(width, height, palette, t, mirror_h=False, mirror_v=False):
+    """
+    Watercolor - soft blended colors with bleeding edges.
+    """
+    fragment_shader = '''
+        #version 330
+        out vec4 fragColor;
+        uniform float iTime;
+        uniform vec2 iResolution;
+
+        float hash(vec2 p) {
+            return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+        }
+
+        float noise(vec2 p) {
+            vec2 i = floor(p);
+            vec2 f = fract(p);
+            f = f * f * (3.0 - 2.0 * f);
+            return mix(
+                mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x),
+                mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x),
+                f.y
+            );
+        }
+
+        void main() {
+            vec2 uv = gl_FragCoord.xy / iResolution.xy;
+            vec2 p = uv * 2.0 - 1.0;
+            p.x *= iResolution.x / iResolution.y;
+
+            // Soft color regions
+            float n1 = noise(p * 2.0 + vec2(iTime * 0.1, 0.0));
+            float n2 = noise(p * 3.0 + vec2(0.0, iTime * 0.15));
+            float n3 = noise(p * 1.5 + vec2(iTime * 0.08, iTime * 0.12));
+
+            // Color bleeding effect
+            vec3 color1 = vec3(0.8, 0.2, 0.3);
+            vec3 color2 = vec3(0.2, 0.4, 0.8);
+            vec3 color3 = vec3(0.9, 0.7, 0.2);
+            vec3 paperColor = vec3(0.95, 0.95, 0.9);
+
+            vec3 col = paperColor;
+            col = mix(col, color1, smoothstep(0.3, 0.7, n1) * 0.6);
+            col = mix(col, color2, smoothstep(0.4, 0.8, n2) * 0.5);
+            col = mix(col, color3, smoothstep(0.35, 0.75, n3) * 0.4);
+
+            // Paper texture
+            float paper = noise(p * 50.0) * 0.05;
+            col += paper;
+
+            fragColor = vec4(col, 1.0);
+        }
+    '''
+    return render_shader(fragment_shader, width, height, palette, t)
+
+def generate_shader_refraction_frame(width, height, palette, t, mirror_h=False, mirror_v=False):
+    """
+    Refraction - glass-like distortion with chromatic effects.
+    """
+    fragment_shader = '''
+        #version 330
+        out vec4 fragColor;
+        uniform float iTime;
+        uniform vec2 iResolution;
+
+        float hash(vec2 p) {
+            return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+        }
+
+        float noise(vec2 p) {
+            vec2 i = floor(p);
+            vec2 f = fract(p);
+            f = f * f * (3.0 - 2.0 * f);
+            return mix(
+                mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x),
+                mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x),
+                f.y
+            );
+        }
+
+        void main() {
+            vec2 uv = gl_FragCoord.xy / iResolution.xy;
+
+            // Distortion field
+            vec2 distortionUV = uv * 5.0 + iTime * 0.2;
+            float n1 = noise(distortionUV);
+            float n2 = noise(distortionUV * 2.0 + 1.5);
+
+            vec2 distortion = vec2(n1, n2) * 0.1 - 0.05;
+
+            // Chromatic aberration
+            vec2 uvR = uv + distortion * 1.02;
+            vec2 uvG = uv + distortion;
+            vec2 uvB = uv + distortion * 0.98;
+
+            // Sample background pattern
+            float r = sin(uvR.x * 10.0 + iTime) * 0.5 + 0.5;
+            float g = sin(uvG.y * 10.0 + iTime * 1.1) * 0.5 + 0.5;
+            float b = sin((uvB.x + uvB.y) * 7.0 + iTime * 0.9) * 0.5 + 0.5;
+
+            vec3 col = vec3(r, g, b);
+
+            fragColor = vec4(col, 1.0);
+        }
+    '''
+    return render_shader(fragment_shader, width, height, palette, t)
+
+def generate_shader_hologram_frame(width, height, palette, t, mirror_h=False, mirror_v=False):
+    """
+    Hologram - scanline holographic projection effect.
+    """
+    fragment_shader = '''
+        #version 330
+        out vec4 fragColor;
+        uniform float iTime;
+        uniform vec2 iResolution;
+
+        void main() {
+            vec2 uv = gl_FragCoord.xy / iResolution.xy;
+            vec2 p = uv * 2.0 - 1.0;
+            p.x *= iResolution.x / iResolution.y;
+
+            // Rotating hologram
+            float angle = iTime * 0.5;
+            float c = cos(angle);
+            float s = sin(angle);
+            vec2 rotated = vec2(p.x * c - p.y * s, p.x * s + p.y * c);
+
+            // Hologram shape
+            float dist = length(rotated);
+            float shape = smoothstep(0.5, 0.48, dist) - smoothstep(0.52, 0.5, dist);
+
+            // Scanlines
+            float scanlines = sin(uv.y * 300.0 + iTime * 5.0) * 0.5 + 0.5;
+
+            // Flicker
+            float flicker = sin(iTime * 20.0) * 0.1 + 0.9;
+
+            // Hologram color (cyan)
+            vec3 holoColor = vec3(0.2, 0.8, 1.0);
+
+            float intensity = shape * scanlines * flicker;
+            vec3 col = holoColor * intensity;
+
+            // Glow
+            col += holoColor * smoothstep(0.6, 0.4, dist) * 0.2;
+
+            fragColor = vec4(col, 1.0);
+        }
+    '''
+    return render_shader(fragment_shader, width, height, palette, t)
+
+def generate_shader_godrays_frame(width, height, palette, t, mirror_h=False, mirror_v=False):
+    """
+    God rays - volumetric light beams through fog.
+    """
+    fragment_shader = '''
+        #version 330
+        out vec4 fragColor;
+        uniform float iTime;
+        uniform vec2 iResolution;
+
+        void main() {
+            vec2 uv = gl_FragCoord.xy / iResolution.xy;
+            vec2 p = uv * 2.0 - 1.0;
+            p.x *= iResolution.x / iResolution.y;
+
+            // Moving light source
+            vec2 lightPos = vec2(sin(iTime * 0.5) * 0.5, 0.3);
+            vec2 toLight = lightPos - p;
+            float angle = atan(toLight.y, toLight.x);
+            float dist = length(toLight);
+
+            // Radial blur for rays
+            float rays = 0.0;
+            int samples = 20;
+            for (int i = 0; i < samples; i++) {
+                float offset = float(i) / float(samples);
+                vec2 samplePos = p + toLight * offset;
+                float ray = sin(angle * 8.0 + iTime + offset * 10.0) * 0.5 + 0.5;
+                rays += ray / (dist * 2.0 + 1.0);
+            }
+            rays /= float(samples);
+
+            // Atmospheric color
+            vec3 skyColor = vec3(0.1, 0.15, 0.3);
+            vec3 rayColor = vec3(1.0, 0.9, 0.7);
+
+            vec3 col = skyColor + rayColor * rays * 0.5;
+
+            fragColor = vec4(col, 1.0);
+        }
+    '''
+    return render_shader(fragment_shader, width, height, palette, t)
+
+def generate_shader_prism_frame(width, height, palette, t, mirror_h=False, mirror_v=False):
+    """
+    Prism - light splitting into spectrum.
+    """
+    fragment_shader = '''
+        #version 330
+        out vec4 fragColor;
+        uniform float iTime;
+        uniform vec2 iResolution;
+
+        void main() {
+            vec2 uv = gl_FragCoord.xy / iResolution.xy;
+            vec2 p = uv * 2.0 - 1.0;
+            p.x *= iResolution.x / iResolution.y;
+
+            // Prism center
+            vec2 prismPos = vec2(sin(iTime * 0.3) * 0.3, 0.0);
+            vec2 toPrism = p - prismPos;
+            float angle = atan(toPrism.y, toPrism.x);
+            float dist = length(toPrism);
+
+            // Spectrum dispersion
+            float dispersion = 0.1;
+
+            // Sample colors at different angles (chromatic dispersion)
+            float r = smoothstep(0.4, 0.0, abs(angle - 0.0)) / (dist + 0.5);
+            float g = smoothstep(0.4, 0.0, abs(angle - 0.1)) / (dist + 0.5);
+            float b = smoothstep(0.4, 0.0, abs(angle - 0.2)) / (dist + 0.5);
+
+            // Rainbow spectrum
+            float spectrum = mod(angle / 6.28 + iTime * 0.1, 1.0);
+            vec3 rainbow = vec3(
+                sin(spectrum * 6.28) * 0.5 + 0.5,
+                sin(spectrum * 6.28 + 2.09) * 0.5 + 0.5,
+                sin(spectrum * 6.28 + 4.19) * 0.5 + 0.5
+            );
+
+            vec3 col = vec3(r, g, b) + rainbow * smoothstep(0.5, 0.3, dist) * 0.5;
+
+            fragColor = vec4(col, 1.0);
+        }
+    '''
+    return render_shader(fragment_shader, width, height, palette, t)
+
+def generate_shader_magnetic_field_frame(width, height, palette, t, mirror_h=False, mirror_v=False):
+    """
+    Magnetic field - iron filing patterns around magnets.
+    """
+    fragment_shader = '''
+        #version 330
+        out vec4 fragColor;
+        uniform float iTime;
+        uniform vec2 iResolution;
+
+        void main() {
+            vec2 uv = gl_FragCoord.xy / iResolution.xy;
+            vec2 p = uv * 2.0 - 1.0;
+            p.x *= iResolution.x / iResolution.y;
+
+            // Two magnetic poles
+            vec2 pole1 = vec2(sin(iTime * 0.5) * 0.5, 0.0);
+            vec2 pole2 = vec2(-sin(iTime * 0.5) * 0.5, 0.0);
+
+            // Field lines
+            vec2 field1 = (p - pole1) / (length(p - pole1) + 0.1);
+            vec2 field2 = -(p - pole2) / (length(p - pole2) + 0.1);
+
+            vec2 field = field1 + field2;
+            float fieldStrength = length(field);
+            float fieldAngle = atan(field.y, field.x);
+
+            // Field line pattern
+            float lines = sin(fieldAngle * 10.0 + fieldStrength * 20.0) * 0.5 + 0.5;
+            lines *= smoothstep(0.1, 0.0, abs(fract(fieldStrength * 5.0) - 0.5));
+
+            vec3 col = vec3(lines * 0.5, lines * 0.7, lines);
+
+            // Highlight poles
+            col += vec3(1.0, 0.2, 0.2) * smoothstep(0.1, 0.0, length(p - pole1));
+            col += vec3(0.2, 0.2, 1.0) * smoothstep(0.1, 0.0, length(p - pole2));
+
+            fragColor = vec4(col, 1.0);
+        }
+    '''
+    return render_shader(fragment_shader, width, height, palette, t)
+
+def generate_shader_cel_shading_frame(width, height, palette, t, mirror_h=False, mirror_v=False):
+    """
+    Cel shading - toon/anime style with hard color bands.
+    """
+    fragment_shader = '''
+        #version 330
+        out vec4 fragColor;
+        uniform float iTime;
+        uniform vec2 iResolution;
+
+        void main() {
+            vec2 uv = gl_FragCoord.xy / iResolution.xy;
+            vec2 p = uv * 2.0 - 1.0;
+            p.x *= iResolution.x / iResolution.y;
+
+            // Rotating sphere
+            float angle = iTime * 0.5;
+            vec3 lightDir = normalize(vec3(cos(angle), 0.5, sin(angle)));
+
+            // Sphere center
+            vec3 spherePos = vec3(0.0, 0.0, 0.0);
+            vec3 rayDir = normalize(vec3(p.x, p.y, -1.0));
+
+            // Simple sphere
+            float dist = length(p);
+
+            if (dist < 0.5) {
+                // Calculate normal
+                vec3 normal = normalize(vec3(p.x, p.y, sqrt(0.25 - dist * dist)));
+
+                // Lighting
+                float diffuse = max(0.0, dot(normal, lightDir));
+
+                // Cel shading - posterize
+                diffuse = floor(diffuse * 4.0) / 4.0;
+
+                vec3 baseColor = vec3(0.8, 0.3, 0.4);
+                vec3 col = baseColor * (diffuse * 0.7 + 0.3);
+
+                // Outline
+                if (dist > 0.48) {
+                    col = vec3(0.0);
+                }
+
+                fragColor = vec4(col, 1.0);
+            } else {
+                fragColor = vec4(0.9, 0.95, 1.0, 1.0);
+            }
+        }
+    '''
+    return render_shader(fragment_shader, width, height, palette, t)
+
+def generate_shader_charcoal_frame(width, height, palette, t, mirror_h=False, mirror_v=False):
+    """
+    Charcoal sketch - procedural hatching and cross-hatching.
+    """
+    fragment_shader = '''
+        #version 330
+        out vec4 fragColor;
+        uniform float iTime;
+        uniform vec2 iResolution;
+
+        float hash(vec2 p) {
+            return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+        }
+
+        float noise(vec2 p) {
+            vec2 i = floor(p);
+            vec2 f = fract(p);
+            f = f * f * (3.0 - 2.0 * f);
+            return mix(
+                mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x),
+                mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x),
+                f.y
+            );
+        }
+
+        void main() {
+            vec2 uv = gl_FragCoord.xy / iResolution.xy;
+            vec2 p = uv * 2.0 - 1.0;
+            p.x *= iResolution.x / iResolution.y;
+
+            // Shape to sketch
+            float shape = length(p - vec2(sin(iTime) * 0.3, cos(iTime * 0.7) * 0.3));
+            float value = smoothstep(0.6, 0.4, shape);
+
+            // Hatching pattern
+            float hatch1 = sin((p.x + p.y) * 30.0) * 0.5 + 0.5;
+            float hatch2 = sin((p.x - p.y) * 30.0) * 0.5 + 0.5;
+
+            // Cross-hatching based on darkness
+            float hatching = hatch1;
+            if (value > 0.5) {
+                hatching = min(hatch1, hatch2);
+            }
+
+            // Paper texture
+            float paper = noise(uv * 100.0) * 0.1 + 0.9;
+
+            float sketch = mix(paper, paper * 0.2, value * hatching);
+
+            vec3 col = vec3(sketch);
+
+            fragColor = vec4(col, 1.0);
+        }
+    '''
+    return render_shader(fragment_shader, width, height, palette, t)
+
+def generate_shader_mosaic_frame(width, height, palette, t, mirror_h=False, mirror_v=False):
+    """
+    Mosaic tiles - animated tile tessellation.
+    """
+    fragment_shader = '''
+        #version 330
+        out vec4 fragColor;
+        uniform float iTime;
+        uniform vec2 iResolution;
+
+        float hash(vec2 p) {
+            return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+        }
+
+        void main() {
+            vec2 uv = gl_FragCoord.xy / iResolution.xy;
+
+            // Tile size
+            float tiles = 20.0 + sin(iTime) * 5.0;
+            vec2 tilePos = floor(uv * tiles);
+
+            // Tile color
+            float tileHash = hash(tilePos + floor(iTime * 2.0));
+
+            // Color gradient
+            float hue = tileHash * 6.28;
+            vec3 col = vec3(
+                sin(hue) * 0.5 + 0.5,
+                sin(hue + 2.09) * 0.5 + 0.5,
+                sin(hue + 4.19) * 0.5 + 0.5
+            );
+
+            // Tile borders (grout)
+            vec2 tileFract = fract(uv * tiles);
+            float border = smoothstep(0.05, 0.1, tileFract.x) *
+                          smoothstep(0.05, 0.1, tileFract.y) *
+                          smoothstep(0.05, 0.1, 1.0 - tileFract.x) *
+                          smoothstep(0.05, 0.1, 1.0 - tileFract.y);
+
+            col = mix(vec3(0.2), col, border);
+
+            fragColor = vec4(col, 1.0);
+        }
+    '''
+    return render_shader(fragment_shader, width, height, palette, t)
+
+def generate_shader_stained_glass_frame(width, height, palette, t, mirror_h=False, mirror_v=False):
+    """
+    Stained glass - colored glass segments with lead lines.
+    """
+    fragment_shader = '''
+        #version 330
+        out vec4 fragColor;
+        uniform float iTime;
+        uniform vec2 iResolution;
+
+        float hash(vec2 p) {
+            return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+        }
+
+        float noise(vec2 p) {
+            vec2 i = floor(p);
+            vec2 f = fract(p);
+            f = f * f * (3.0 - 2.0 * f);
+            return mix(
+                mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x),
+                mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x),
+                f.y
+            );
+        }
+
+        void main() {
+            vec2 uv = gl_FragCoord.xy / iResolution.xy;
+            vec2 p = uv * 2.0 - 1.0;
+            p.x *= iResolution.x / iResolution.y;
+
+            // Voronoi cells for glass segments
+            vec2 cellPos = floor(p * 5.0);
+            vec2 cellFract = fract(p * 5.0);
+
+            float minDist = 1.0;
+            vec2 closestCell = vec2(0.0);
+
+            for (int y = -1; y <= 1; y++) {
+                for (int x = -1; x <= 1; x++) {
+                    vec2 neighbor = vec2(float(x), float(y));
+                    vec2 point = hash(cellPos + neighbor) * vec2(1.0) + neighbor;
+                    float dist = length(cellFract - point);
+                    if (dist < minDist) {
+                        minDist = dist;
+                        closestCell = cellPos + neighbor;
+                    }
+                }
+            }
+
+            // Glass color based on cell
+            float hue = hash(closestCell) * 6.28 + iTime * 0.1;
+            vec3 glassColor = vec3(
+                sin(hue) * 0.5 + 0.5,
+                sin(hue + 2.09) * 0.5 + 0.5,
+                sin(hue + 4.19) * 0.5 + 0.5
+            );
+
+            // Lead lines (borders)
+            float border = smoothstep(0.05, 0.1, minDist);
+            vec3 col = mix(vec3(0.1), glassColor * 0.8, border);
+
+            // Light transmission effect
+            float transmission = noise(p * 10.0 + iTime * 0.1) * 0.2 + 0.8;
+            col *= transmission;
+
+            fragColor = vec4(col, 1.0);
+        }
+    '''
+    return render_shader(fragment_shader, width, height, palette, t)
+
+def generate_shader_neon_frame(width, height, palette, t, mirror_h=False, mirror_v=False):
+    """
+    Neon signs - glowing tube letters with flicker.
+    """
+    fragment_shader = '''
+        #version 330
+        out vec4 fragColor;
+        uniform float iTime;
+        uniform vec2 iResolution;
+
+        float hash(float p) {
+            return fract(sin(p) * 43758.5453);
+        }
+
+        void main() {
+            vec2 uv = gl_FragCoord.xy / iResolution.xy;
+            vec2 p = uv * 2.0 - 1.0;
+            p.x *= iResolution.x / iResolution.y;
+
+            // Neon tube path (simple pattern)
+            float tube1 = abs(sin(p.x * 3.0 + iTime) * 0.3) - abs(p.y);
+            float tube2 = abs(cos(p.x * 4.0 - iTime * 0.7) * 0.4) - abs(p.y + 0.3);
+            float tube3 = abs(sin(p.x * 5.0 + iTime * 1.3) * 0.3) - abs(p.y - 0.3);
+
+            // Neon glow
+            float glow1 = smoothstep(0.1, 0.0, abs(tube1)) * 2.0;
+            float glow2 = smoothstep(0.1, 0.0, abs(tube2)) * 2.0;
+            float glow3 = smoothstep(0.1, 0.0, abs(tube3)) * 2.0;
+
+            // Flicker effect
+            float flicker = hash(floor(iTime * 10.0)) * 0.2 + 0.8;
+
+            // Different neon colors
+            vec3 color1 = vec3(1.0, 0.1, 0.5) * glow1;  // Pink
+            vec3 color2 = vec3(0.1, 0.5, 1.0) * glow2;  // Blue
+            vec3 color3 = vec3(0.5, 1.0, 0.1) * glow3;  // Green
+
+            vec3 col = (color1 + color2 + color3) * flicker;
+
+            // Dark background
+            col += vec3(0.05, 0.0, 0.1);
+
+            fragColor = vec4(col, 1.0);
+        }
+    '''
+    return render_shader(fragment_shader, width, height, palette, t)
+
+def generate_shader_snow_frame(width, height, palette, t, mirror_h=False, mirror_v=False):
+    """
+    Snow/blizzard - falling snowflakes with depth and wind.
+    """
+    fragment_shader = '''
+        #version 330
+        out vec4 fragColor;
+        uniform float iTime;
+        uniform vec2 iResolution;
+
+        float hash(vec2 p) {
+            return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+        }
+
+        void main() {
+            vec2 uv = gl_FragCoord.xy / iResolution.xy;
+
+            vec3 col = vec3(0.4, 0.5, 0.6);  // Gray sky
+
+            // Multiple layers for depth
+            for (int layer = 0; layer < 3; layer++) {
+                float depth = float(layer + 1);
+                float speed = 0.5 / depth;
+                float wind = sin(iTime * 0.5) * 0.1 / depth;
+
+                vec2 snowUV = uv * depth * 10.0;
+                snowUV.y += iTime * speed;
+                snowUV.x += wind * 10.0;
+
+                vec2 snowCell = floor(snowUV);
+                vec2 snowFract = fract(snowUV);
+
+                // Snowflake in each cell
+                vec2 flakePos = vec2(hash(snowCell), hash(snowCell + vec2(13.7, 27.3)));
+                float dist = length(snowFract - flakePos);
+
+                float flakeSize = 0.02 / depth;
+                float flake = smoothstep(flakeSize, 0.0, dist);
+
+                col += vec3(1.0) * flake * (1.0 / depth);
+            }
+
+            fragColor = vec4(col, 1.0);
+        }
+    '''
+    return render_shader(fragment_shader, width, height, palette, t)
+
+def generate_shader_rain_frame(width, height, palette, t, mirror_h=False, mirror_v=False):
+    """
+    Rain - streaking rain with puddle ripples.
+    """
+    fragment_shader = '''
+        #version 330
+        out vec4 fragColor;
+        uniform float iTime;
+        uniform vec2 iResolution;
+
+        float hash(vec2 p) {
+            return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+        }
+
+        void main() {
+            vec2 uv = gl_FragCoord.xy / iResolution.xy;
+
+            vec3 col = vec3(0.2, 0.25, 0.3);  // Dark rainy sky
+
+            // Rain streaks
+            vec2 rainUV = uv * vec2(20.0, 100.0);
+            rainUV.y += iTime * 10.0;
+
+            vec2 rainCell = floor(rainUV);
+            vec2 rainFract = fract(rainUV);
+
+            float rainX = hash(rainCell);
+            float rainDrop = smoothstep(0.1, 0.0, abs(rainFract.x - rainX));
+            rainDrop *= smoothstep(1.0, 0.9, rainFract.y);
+
+            col += vec3(0.5, 0.6, 0.7) * rainDrop * 0.5;
+
+            // Ripples at bottom
+            if (uv.y < 0.3) {
+                vec2 rippleUV = uv * 10.0;
+                float ripple = sin(length(rippleUV - vec2(5.0, 1.5)) * 10.0 - iTime * 5.0) * 0.5 + 0.5;
+                ripple *= smoothstep(0.3, 0.0, uv.y);
+                col += vec3(0.2, 0.3, 0.4) * ripple * 0.2;
+            }
+
+            fragColor = vec4(col, 1.0);
+        }
+    '''
+    return render_shader(fragment_shader, width, height, palette, t)
+
+def generate_shader_sandstorm_frame(width, height, palette, t, mirror_h=False, mirror_v=False):
+    """
+    Sandstorm - swirling particles with visibility reduction.
+    """
+    fragment_shader = '''
+        #version 330
+        out vec4 fragColor;
+        uniform float iTime;
+        uniform vec2 iResolution;
+
+        float hash(vec2 p) {
+            return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+        }
+
+        float noise(vec2 p) {
+            vec2 i = floor(p);
+            vec2 f = fract(p);
+            f = f * f * (3.0 - 2.0 * f);
+            return mix(
+                mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x),
+                mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x),
+                f.y
+            );
+        }
+
+        void main() {
+            vec2 uv = gl_FragCoord.xy / iResolution.xy;
+            vec2 p = uv * 2.0 - 1.0;
+            p.x *= iResolution.x / iResolution.y;
+
+            // Swirling sand
+            float turbulence = noise(p * 3.0 + vec2(iTime, iTime * 0.5));
+            turbulence += noise(p * 7.0 - vec2(iTime * 1.3, iTime * 0.8)) * 0.5;
+
+            // Sand color
+            vec3 sandColor = vec3(0.8, 0.6, 0.3);
+            vec3 skyColor = vec3(0.6, 0.5, 0.3);
+
+            vec3 col = mix(skyColor, sandColor, turbulence);
+
+            // Particle layer
+            vec2 particleUV = uv * 50.0 + vec2(iTime * 2.0, iTime);
+            vec2 particleCell = floor(particleUV);
+            vec2 particleFract = fract(particleUV);
+
+            vec2 particlePos = vec2(hash(particleCell), hash(particleCell + 13.7));
+            float particle = smoothstep(0.2, 0.0, length(particleFract - particlePos));
+
+            col += sandColor * particle * 0.3;
+
+            fragColor = vec4(col, 1.0);
+        }
+    '''
+    return render_shader(fragment_shader, width, height, palette, t)
+
+def generate_shader_fireflies_frame(width, height, palette, t, mirror_h=False, mirror_v=False):
+    """
+    Fireflies - glowing particles with bioluminescent trails.
+    """
+    fragment_shader = '''
+        #version 330
+        out vec4 fragColor;
+        uniform float iTime;
+        uniform vec2 iResolution;
+
+        float hash(vec2 p) {
+            return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+        }
+
+        void main() {
+            vec2 uv = gl_FragCoord.xy / iResolution.xy;
+            vec2 p = uv * 2.0 - 1.0;
+            p.x *= iResolution.x / iResolution.y;
+
+            vec3 col = vec3(0.02, 0.05, 0.1);  // Dark night
+
+            // Multiple fireflies
+            for (int i = 0; i < 20; i++) {
+                float fi = float(i);
+
+                // Firefly path
+                vec2 pos = vec2(
+                    sin(iTime * 0.5 + fi * 0.7) * 0.8,
+                    cos(iTime * 0.3 + fi * 1.3) * 0.6
+                );
+
+                float dist = length(p - pos);
+
+                // Pulsing glow
+                float pulse = sin(iTime * 3.0 + fi * 2.0) * 0.5 + 0.5;
+                float glow = smoothstep(0.1, 0.0, dist) * pulse;
+
+                // Yellow-green firefly color
+                vec3 fireflyColor = vec3(0.8, 1.0, 0.3);
+                col += fireflyColor * glow * 0.5;
+
+                // Trail
+                for (int t = 1; t < 5; t++) {
+                    float trailTime = iTime - float(t) * 0.05;
+                    vec2 trailPos = vec2(
+                        sin(trailTime * 0.5 + fi * 0.7) * 0.8,
+                        cos(trailTime * 0.3 + fi * 1.3) * 0.6
+                    );
+                    float trailDist = length(p - trailPos);
+                    float trailGlow = smoothstep(0.05, 0.0, trailDist) * 0.3 / float(t);
+                    col += fireflyColor * trailGlow * pulse;
+                }
+            }
+
+            fragColor = vec4(col, 1.0);
+        }
+    '''
+    return render_shader(fragment_shader, width, height, palette, t)
+
+def generate_shader_dandelion_frame(width, height, palette, t, mirror_h=False, mirror_v=False):
+    """
+    Dandelion seeds - floating seeds drifting on air currents.
+    """
+    fragment_shader = '''
+        #version 330
+        out vec4 fragColor;
+        uniform float iTime;
+        uniform vec2 iResolution;
+
+        float hash(vec2 p) {
+            return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+        }
+
+        float noise(vec2 p) {
+            vec2 i = floor(p);
+            vec2 f = fract(p);
+            f = f * f * (3.0 - 2.0 * f);
+            return mix(
+                mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x),
+                mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x),
+                f.y
+            );
+        }
+
+        void main() {
+            vec2 uv = gl_FragCoord.xy / iResolution.xy;
+            vec2 p = uv * 2.0 - 1.0;
+            p.x *= iResolution.x / iResolution.y;
+
+            // Sky gradient
+            vec3 col = mix(vec3(0.5, 0.7, 0.9), vec3(0.7, 0.85, 1.0), uv.y);
+
+            // Floating seeds
+            for (int i = 0; i < 30; i++) {
+                float fi = float(i);
+
+                // Seed starting position
+                vec2 seedStart = vec2(hash(vec2(fi, 0.0)) * 2.0 - 1.0, -1.5);
+
+                // Drift with time
+                float driftTime = mod(iTime * 0.2 + fi * 0.1, 2.0);
+
+                // Wind influence
+                float windX = noise(vec2(driftTime, fi)) * 0.5 - 0.25;
+                float windY = noise(vec2(fi, driftTime)) * 0.1;
+
+                vec2 seedPos = seedStart + vec2(windX, driftTime + windY);
+
+                // Only draw if in view
+                if (seedPos.y > -1.0 && seedPos.y < 1.0) {
+                    float dist = length(p - seedPos);
+
+                    // Seed
+                    float seed = smoothstep(0.02, 0.0, dist);
+                    // Parachute
+                    float parachute = smoothstep(0.05, 0.02, dist) * (1.0 - seed);
+
+                    col += vec3(0.9, 0.85, 0.8) * (seed + parachute * 0.5);
+                }
+            }
+
+            fragColor = vec4(col, 1.0);
+        }
+    '''
+    return render_shader(fragment_shader, width, height, palette, t)
+
+# ============================================================================
 # VIDEO GENERATORS DICTIONARY
 # ============================================================================
 
@@ -4369,6 +6383,56 @@ GENERATORS = {
     'isometric_city': ('Isometric City', generate_isometric_city_frame),
     'voxel_waves': ('Voxel Waves', generate_voxel_waves_frame),
     'isometric_stairs': ('Isometric Stairs', generate_isometric_stairs_frame),
+    # NEW Sprite Character generators
+    'swimming_character': ('Swimming Character', generate_swimming_character_frame),
+    'climbing_character': ('Climbing Character', generate_climbing_character_frame),
+    'crawling_character': ('Crawling Character', generate_crawling_character_frame),
+    'combat_character': ('Combat Character', generate_combat_character_frame),
+    'idle_breathing': ('Idle Breathing', generate_idle_breathing_frame),
+    'sprite_particles': ('Sprite Particles', generate_sprite_particles_frame),
+    'transforming_sprite': ('Transforming Sprite', generate_transforming_sprite_frame),
+    'multi_sprite_interaction': ('Multi-Sprite Interaction', generate_multi_sprite_interaction_frame),
+    'vehicle_sprites': ('Vehicle Sprites', generate_vehicle_sprites_frame),
+    'procedural_sprite': ('Procedural Sprite', generate_procedural_sprite_frame),
+    'sprite_shadows': ('Sprite Shadows', generate_sprite_shadows_frame),
+    'emoting_sprites': ('Emoting Sprites', generate_emoting_sprites_frame),
+    # NEW Voxel generators
+    'voxel_trees': ('Voxel Trees', generate_voxel_trees_frame),
+    'voxel_clouds': ('Voxel Clouds', generate_voxel_clouds_frame),
+    'voxel_water': ('Voxel Water', generate_voxel_water_frame),
+    'voxel_fire': ('Voxel Fire', generate_voxel_fire_frame),
+    'voxel_smoke': ('Voxel Smoke', generate_voxel_smoke_frame),
+    'voxel_maze': ('Voxel Maze', generate_voxel_maze_frame),
+    'voxel_pillars': ('Voxel Pillars', generate_voxel_pillars_frame),
+    'voxel_spiral': ('Voxel Spiral', generate_voxel_spiral_frame),
+    'voxel_dna': ('Voxel DNA', generate_voxel_dna_frame),
+    'voxel_bridges': ('Voxel Bridges', generate_voxel_bridges_frame),
+    'voxel_explosion': ('Voxel Explosion', generate_voxel_explosion_frame),
+    'voxel_rain': ('Voxel Rain', generate_voxel_rain_frame),
+    'voxel_planets': ('Voxel Planets', generate_voxel_planets_frame),
+    'voxel_characters': ('Voxel Characters', generate_voxel_characters_frame),
+    'smooth_voxels': ('Smooth Voxels', generate_smooth_voxels_frame),
+    # NEW Shader effects
+    'shader_ripple': ('Shader: Ripple', generate_shader_ripple_frame),
+    'shader_liquid_metal': ('Shader: Liquid Metal', generate_shader_liquid_metal_frame),
+    'shader_oil_slick': ('Shader: Oil Slick', generate_shader_oil_slick_frame),
+    'shader_ink_diffusion': ('Shader: Ink Diffusion', generate_shader_ink_diffusion_frame),
+    'shader_watercolor': ('Shader: Watercolor', generate_shader_watercolor_frame),
+    'shader_refraction': ('Shader: Refraction', generate_shader_refraction_frame),
+    'shader_hologram': ('Shader: Hologram', generate_shader_hologram_frame),
+    'shader_godrays': ('Shader: God Rays', generate_shader_godrays_frame),
+    'shader_prism': ('Shader: Prism', generate_shader_prism_frame),
+    'shader_magnetic_field': ('Shader: Magnetic Field', generate_shader_magnetic_field_frame),
+    'shader_cel_shading': ('Shader: Cel Shading', generate_shader_cel_shading_frame),
+    'shader_charcoal': ('Shader: Charcoal', generate_shader_charcoal_frame),
+    'shader_mosaic': ('Shader: Mosaic', generate_shader_mosaic_frame),
+    'shader_stained_glass': ('Shader: Stained Glass', generate_shader_stained_glass_frame),
+    'shader_neon': ('Shader: Neon', generate_shader_neon_frame),
+    'shader_snow': ('Shader: Snow', generate_shader_snow_frame),
+    'shader_rain': ('Shader: Rain', generate_shader_rain_frame),
+    'shader_sandstorm': ('Shader: Sandstorm', generate_shader_sandstorm_frame),
+    'shader_fireflies': ('Shader: Fireflies', generate_shader_fireflies_frame),
+    'shader_dandelion': ('Shader: Dandelion Seeds', generate_shader_dandelion_frame),
 }
 
 # ============================================================================
